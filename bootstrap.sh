@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Atlas.Lab Homelab Bootstrap v3.4.0
+# Bootstreep Homelab Bootstrap v3.5.0
 # Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
 #
 # Usage:
@@ -33,6 +33,7 @@ log()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 info() { echo -e "${CYAN}[i]${NC} $1"; }
 err()  { echo -e "${RED}[✗]${NC} $1"; }
+die()  { err "$1"; exit 1; }
 
 # ─── Docker-Helfer mit Retry ────────────────────────────────────────────────
 dc_up() {
@@ -40,9 +41,12 @@ dc_up() {
     local name="$2"
     local max_attempts=3
     local attempt=1
+    local cwd
+    cwd="$(pwd)"
     while [ "$attempt" -le "$max_attempts" ]; do
-        if cd ~/docker/"$dir" && docker compose up -d 2>/dev/null; then
+        if (cd ~/docker/"$dir" && docker compose up -d) 2>/dev/null; then
             log "$name gestartet."
+            cd "$cwd" 2>/dev/null || true
             return 0
         fi
         warn "$name: Startversuch $attempt/$max_attempts fehlgeschlagen – warte 5s..."
@@ -50,10 +54,15 @@ dc_up() {
         attempt=$((attempt + 1))
     done
     err "$name konnte nach $max_attempts Versuchen nicht gestartet werden."
+    cd "$cwd" 2>/dev/null || true
     return 1
 }
 
-info "Atlas.Lab Homelab Bootstrap v3.4.0"
+# Logging sofort starten (auch für Pre-Flight)
+LOG_FILE="${HOME_DIR:-$HOME}/bootstrap.log"
+exec &> >(tee -a "$LOG_FILE")
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.5.0 gestartet"
+
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
 echo ""
@@ -116,7 +125,7 @@ section_1_system() {
     sudo timedatectl set-timezone "$TIMEZONE" 2>/dev/null || warn "Zeitzone konnte nicht gesetzt werden"
 
     log "Unattended-Upgrades konfigurieren..."
-    sudo dpkg-reconfigure --priority=low unattended-upgrades 2>/dev/null || true
+    sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --priority=low unattended-upgrades 2>/dev/null || true
 
     # Fortschritt speichern VOR möglichem Neustart
     echo "STEP1=done" >> "$HOME_DIR/.bootstrap-progress" 2>/dev/null || true
@@ -300,8 +309,10 @@ section_5_dns() {
 
     log "DNSSEC-Test durchführen..."
     sleep 2
-    if dig sigfail.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "192.168.178.1"; then
-        warn "DNSSEC sigfail erwartet: kein Ergebnis – alles gut (DNSSEC blockiert korrekt)"
+    if dig sigfail.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q .; then
+        warn "DNSSEC sigfail: unerwartete Antwort erhalten – DNSSEC blockiert möglicherweise nicht korrekt"
+    else
+        log "DNSSEC sigfail korrekt blockiert (keine Antwort)"
     fi
     if dig sigok.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "134.91.78.139"; then
         log "DNSSEC-Validierung funktioniert (sigok aufgelöst)"
@@ -330,7 +341,7 @@ section_6_privacy() {
     if docker image inspect websurfx:local &>/dev/null 2>&1; then
         log "Websurfx-Image bereits gebaut."
     else
-        cd ~/docker/websurfx/src && docker build -t websurfx:local .
+        docker build -t websurfx:local ~/docker/websurfx/src
     fi
 
     cp compose/websurfx.yml ~/docker/websurfx/compose.yml
@@ -521,6 +532,65 @@ section_11_wireguard() {
     warn "  → Verbindung zu deinem Tailscale-Netzwerk (tailscale.com)"
 }
 
+# ─── 12. AI AGENT (TELEGRAM BOT + ASSISTANT) ─────────────────────────────────
+section_12_ai_agent() {
+    if [ "$SKIP_AI_AGENT" = "true" ]; then
+        info "AI Agent übersprungen (SKIP_AI_AGENT=true)."
+        return
+    fi
+
+    echo ""
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║ 12.  AI AGENT (TELEGRAM BOT + ASSISTANT)          ║"
+    echo "╚══════════════════════════════════════════════════╝"
+
+    log "AI-Agent-Setup starten..."
+
+    if ! command -v python3 &>/dev/null; then
+        sudo apt install -y python3 python3-pip python3-venv
+    fi
+
+    mkdir -p ~/ai-agent
+    if [ ! -f ~/ai-agent/.env ]; then
+        cp ai-agent/.env.example ~/ai-agent/.env
+        warn "→ Telegram Bot-Token eintragen: nano ~/ai-agent/.env"
+    fi
+
+    if [ ! -d ~/ai-agent/venv ]; then
+        python3 -m venv ~/ai-agent/venv
+        source ~/ai-agent/venv/bin/activate
+        pip install python-telegram-bot requests schedule openai
+        deactivate
+    fi
+
+    cp ai-agent/telegram-bot.py ~/ai-agent/bot.py
+    cp ai-agent/daily_briefing.py ~/ai-agent/daily.py
+    cp ai-agent/server_commands.py ~/ai-agent/commands.py
+
+    log "Bot als Systemd-Service registrieren..."
+    sudo tee /etc/systemd/system/ai-agent.service >/dev/null <<EOSVC
+[Unit]
+Description=Bootstreep AI Agent (Telegram Bot)
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$HOME_DIR/ai-agent
+ExecStart=$HOME_DIR/ai-agent/venv/bin/python $HOME_DIR/ai-agent/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOSVC
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable ai-agent 2>/dev/null || true
+    warn "Bot starten nach Konfiguration: sudo systemctl start ai-agent"
+    warn "→ Logs: journalctl -u ai-agent -f"
+}
+
 # ─── 13. GPU/NVIDIA (OPTIONAL) ──────────────────────────────────────────────
 section_13_gpu() {
     echo ""
@@ -557,16 +627,22 @@ section_14_dashboard() {
         log "Dashboard bereits vorhanden – aktualisiere..."
         cd ~/atlaslab-dashboard && git pull
     else
-        git clone https://github.com/braeuningsamuel-cmyk/atlaslab-dashboard.git ~/atlaslab-dashboard
+        git clone https://github.com/braeuningsamuel-cmyk/bootstreep-dashboard.git ~/bootstreep-dashboard
     fi
 
     log "Caddy-Route für Dashboard konfigurieren..."
     if [ -f ~/docker/caddy/Caddyfile ]; then
-        if ! grep -q "atlaslab-dashboard" ~/docker/caddy/Caddyfile 2>/dev/null; then
-            # Dashboard-Catchall-Vor Caddy-Konfiguration einfügen
-            sed -i "1i http://$SERVER_IP:80 {\n    root * /home/$USER/atlaslab-dashboard/src\n    file_server\n}\n" ~/docker/caddy/Caddyfile
+        if ! grep -q "bootstreep-dashboard" ~/docker/caddy/Caddyfile 2>/dev/null; then
+            {
+                echo "http://$SERVER_IP:80 {"
+                echo "    root * /home/$USER/bootstreep-dashboard/src"
+                echo "    file_server"
+                echo "}"
+                echo ""
+                cat ~/docker/caddy/Caddyfile
+            } > ~/docker/caddy/Caddyfile.new
+            mv ~/docker/caddy/Caddyfile.new ~/docker/caddy/Caddyfile
             log "→ Dashboard läuft auf http://$SERVER_IP:80"
-            # Caddy neu laden
             docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || \
                 docker restart caddy 2>/dev/null || true
         else
@@ -577,79 +653,13 @@ section_14_dashboard() {
     fi
 
     log "Dashboard bereit: http://$SERVER_IP:80 (via Caddy) oder Desktop-App"
-    warn "→ Desktop-App bauen: git clone https://github.com/braeuningsamuel-cmyk/atlaslab-dashboard.git"
+    warn "→ Desktop-App bauen: git clone https://github.com/braeuningsamuel-cmyk/bootstreep-dashboard.git"
     warn "→ Dann: npm install && npm run tauri dev"
-}
-
-# ─── 12. AI AGENT (TELEGRAM BOT + ASSISTANT) ─────────────────────────────────
-section_12_ai_agent() {
-    if [ "$SKIP_AI_AGENT" = "true" ]; then
-        info "AI Agent übersprungen (SKIP_AI_AGENT=true)."
-        return
-    fi
-
-    echo ""
-    echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 12.  AI AGENT (TELEGRAM BOT + ASSISTANT)          ║"
-    echo "╚══════════════════════════════════════════════════╝"
-
-    log "AI-Agent-Setup starten..."
-
-    # Python Telegram Bot setup
-    log "Telegram Bot einrichten..."
-    if ! command -v python3 &>/dev/null; then
-        sudo apt install -y python3 python3-pip python3-venv
-    fi
-
-    mkdir -p ~/ai-agent
-    if [ ! -f ~/ai-agent/.env ]; then
-        cp ai-agent/.env.example ~/ai-agent/.env
-        warn "→ Telegram Bot-Token eintragen: nano ~/ai-agent/.env"
-    fi
-
-    # Python-Venv
-    if [ ! -d ~/ai-agent/venv ]; then
-        python3 -m venv ~/ai-agent/venv
-        source ~/ai-agent/venv/bin/activate
-        pip install python-telegram-bot requests schedule openai
-        deactivate
-    fi
-
-    # Bot-Service installieren
-    cp ai-agent/telegram-bot.py ~/ai-agent/bot.py
-    cp ai-agent/daily_briefing.py ~/ai-agent/daily.py
-    cp ai-agent/server_commands.py ~/ai-agent/commands.py
-
-    log "Bot als Systemd-Service registrieren..."
-    sudo tee /etc/systemd/system/ai-agent.service >/dev/null <<EOSVC
-[Unit]
-Description=Atlas.Lab AI Agent (Telegram Bot)
-After=network.target docker.service
-
-[Service]
-Type=simple
-User=$USER
-WorkingDirectory=$HOME_DIR/ai-agent
-ExecStart=$HOME_DIR/ai-agent/venv/bin/python $HOME_DIR/ai-agent/bot.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOSVC
-
-    sudo systemctl daemon-reload
-    sudo systemctl enable ai-agent 2>/dev/null || true
-    warn "Bot starten nach Konfiguration: sudo systemctl start ai-agent"
-    warn "→ Logs: journalctl -u ai-agent -f"
 }
 
 # ─── START ═══════════════════════════════════════════════════════════════════
 main() {
-    # Logging: alles in Datei mitschreiben
-    LOG_FILE="$HOME_DIR/bootstrap.log"
-    exec &> >(tee -a "$LOG_FILE")
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Atlas.Lab Homelab Bootstrap gestartet"
+    # Logging ist bereits vor main() aktiviert
 
     # Marker-Datei für Fortschritt
     PROGRESS_FILE="$HOME_DIR/.bootstrap-progress"
@@ -667,10 +677,9 @@ main() {
     load_progress
 
     echo ""
-    echo "╔══════════════════════════════════════════════════╗"
-    echo "║     Atlas.Lab Homelab Bootstrap v3.4.0             ║"
-    echo "║     Ubuntu 24.04 – Ein Befehl, fertiges Homelab    ║"
-    echo "╚══════════════════════════════════════════════════╝"
+echo "╔══════════════════════════════════════════════════╗"
+echo "║     BOOTSTREEP HOMELAB BOOTSTRAP v3.5.0            ║"
+echo "╚══════════════════════════════════════════════════╝"
     echo ""
 
     # COMPOSE- und CONFIG-Dateien ins Home kopieren
@@ -765,7 +774,7 @@ main() {
     echo ""
     echo "  Dashboard:"
     echo "    http://$SERVER_IP:80        – Web-Dashboard"
-    echo "    ~/atlaslab-dashboard/       – Desktop-Quellcode"
+    echo "    ~/bootstreep-dashboard/      – Desktop-Quellcode"
     echo ""
     echo "  AI Agent (Telegram):"
     echo "    nano ~/ai-agent/.env       – Token eintragen"

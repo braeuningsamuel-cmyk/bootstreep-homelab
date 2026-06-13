@@ -24,7 +24,7 @@ users:
 
 runcmd:
   - git clone https://github.com/...
-  - cd /opt/atlaslab-bootstrap && ./bootstrap.sh
+  - cd /opt/bootstreep-homelab && ./bootstrap.sh
 ```
 
 ### 2. ISO erstellen (für manuelle Installation)

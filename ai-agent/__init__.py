@@ -1,1 +1,1 @@
-# Atlas.Lab AI Agent – Module
+# Bootstreep AI Agent – Module

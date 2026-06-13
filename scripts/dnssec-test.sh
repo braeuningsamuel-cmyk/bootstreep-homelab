@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – DNSSEC-Test
+# Bootstreep Homelab – DNSSEC-Test
 set -euo pipefail
 
 GREEN='\033[0;32m'
@@ -13,7 +13,7 @@ err()  { echo -e "${RED}[✗]${NC} $1"; }
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║  Atlas.Lab Homelab – DNSSEC-Validierung          ║"
+echo "║  Bootstreep Homelab – DNSSEC-Validierung         ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – Health-Check Script
+# Bootstreep Homelab – Health-Check Script
 set -euo pipefail
 
 GREEN='\033[0;32m'
@@ -15,7 +15,7 @@ info() { echo -e "${CYAN}[i]${NC} $1"; }
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║  Atlas.Lab Homelab – Health Check                ║"
+echo "║  Bootstreep Homelab – Health Check               ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 

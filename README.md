@@ -1,4 +1,4 @@
-# Atlas.Lab Homelab Bootstrap 🚀
+# Bootstreep Homelab 🚀
 
 **Ein Befehl – fertiges Homelab mit 21+ Diensten + KI-Assistent**
 
@@ -10,7 +10,7 @@ chmod +x bootstrap.sh && ./bootstrap.sh
 
 ## Übersicht
 
-Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu 24.04 Homelab-Server. Es installiert und konfiguriert automatisch **21+ Dienste** aus dem [Atlas.Lab Homelab Server Guide v3.3](https://github.com/braeuningsamuel-cmyk/atlaslab-homelab-bootstrap) – plus einen **KI-Assistenten per Telegram**, inspiriert von AI-Agent-Plattformen wie GenSpark Claw.
+Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu 24.04 Homelab-Server. Es installiert und konfiguriert automatisch **21+ Dienste** – plus einen **KI-Assistenten per Telegram**.
 
 | Komponente | Beschreibung |
 |---|---|
@@ -29,7 +29,7 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | **Netzwerkfreigabe** | Samba |
 | **Game-Server** | AMP (Minecraft, Valheim uvm.) |
 | **📱 KI-Agent** | Telegram Bot mit Server-Steuerung, Daily Briefing, E-Mail, Kalender |
-| **🖥️ Eigenes Dashboard** | Atlas.Lab Server Control – Caddy-Server (Port 80) + Desktop-App (Tauri) |
+| **🖥️ Eigenes Dashboard** | Bootstreep Server Control – Caddy-Server (Port 80) + Desktop-App (Tauri) |
 
 ## Architektur
 
@@ -78,7 +78,7 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | Unbound | `5335` (127.0.0.1) | Docker |
 | Websurfx | `8080` | Docker |
 | Tor | `9050` (127.0.0.1) | Docker |
-| Atlas.Lab Dashboard | `80` | Caddy (Statisch) |
+| Bootstreep Dashboard | `80` | Caddy (Statisch) |
 | Caddy | `443` | Docker |
 | Nextcloud AIO | `8082` / `9443` | Docker |
 | Jellyfin | `8096` | Docker |
@@ -116,8 +116,8 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub admin@192.168.178.20
 Dann auf dem Server:
 
 ```bash
-git clone https://github.com/braeuningsamuel-cmyk/atlaslab-homelab-bootstrap.git
-cd atlaslab-homelab-bootstrap
+git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git
+cd bootstreep-homelab
 chmod +x bootstrap.sh
 ./bootstrap.sh
 ```
@@ -189,7 +189,7 @@ Dieses Bootstrap-Setup ist designed, um mit AI-Agent-Plattformen wie **GenSpark 
 ## Verzeichnisstruktur
 
 ```
-atlaslab-homelab-bootstrap/
+bootstreep-homelab/
 ├── bootstrap.sh              # Master-Setup-Script
 ├── docker-compose-all.yml    # Alle Dienste in einer Datei
 ├── compose/                  # Docker Compose Definitionen
@@ -300,4 +300,4 @@ MIT – siehe [LICENSE](LICENSE).
 
 ---
 
-*Atlas.Lab Homelab Bootstrap v3.4.0 – Basierend auf dem Atlas.Lab Homelab Server Guide*
+*Bootstreep Homelab v3.5.0*

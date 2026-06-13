@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – Service neustarten
+# Bootstreep Homelab – Service neustarten
 # Usage: ./restart-service.sh <container-name>
 set -euo pipefail
 

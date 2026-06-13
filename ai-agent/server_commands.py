@@ -1,5 +1,5 @@
 """
-Atlas.Lab AI Agent – Server Commands
+Bootstreep AI Agent – Server Commands
 =====================================
 Low-Level-Funktionen für SSH-Homelab-Steuerung.
 Wird vom Telegram-Bot verwendet.

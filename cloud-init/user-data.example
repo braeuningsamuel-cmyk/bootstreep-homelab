@@ -1,5 +1,5 @@
 #cloud-config
-# Atlas.Lab Homelab Bootstrap – Cloud-Init user-data
+# Bootstreep Homelab – Cloud-Init user-data
 #
 # Dieses cloud-init Skript richtet einen frischen Ubuntu 24.04 Server
 # vollautomatisch ein: Benutzer anlegen, SSH-Key hinterlegen,
@@ -28,5 +28,5 @@ packages:
 
 # bootstrap.sh ausführen
 runcmd:
-  - git clone https://github.com/braeuningsamuel-cmyk/atlaslab-homelab-bootstrap.git /opt/atlaslab-bootstrap
-  - cd /opt/atlaslab-bootstrap && chmod +x bootstrap.sh && ./bootstrap.sh
+  - git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git /opt/bootstreep-homelab
+  - cd /opt/bootstreep-homelab && chmod +x bootstrap.sh && ./bootstrap.sh

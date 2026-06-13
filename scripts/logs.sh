@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – Logs anzeigen
+# Bootstreep Homelab – Logs anzeigen
 # Usage: ./logs.sh <container-name> [-f]
 set -euo pipefail
 

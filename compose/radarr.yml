@@ -6,15 +6,18 @@ services:
     ports:
       - "7878:7878"
     volumes:
-      - ./config:/config
+      - radarr_config:/config
       - ~/media/movies:/movies
       - ~/downloads:/downloads
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
     networks:
       - homelab
+
+volumes:
+  radarr_config:
 
 networks:
   homelab:

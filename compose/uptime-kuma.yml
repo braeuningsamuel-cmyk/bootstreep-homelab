@@ -6,9 +6,12 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./data:/app/data
+      - uptime_kuma_data:/app/data
     networks:
       - homelab
+
+volumes:
+  uptime_kuma_data:
 
 networks:
   homelab:

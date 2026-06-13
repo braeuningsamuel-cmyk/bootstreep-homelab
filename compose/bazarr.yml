@@ -6,15 +6,18 @@ services:
     ports:
       - "6767:6767"
     volumes:
-      - ./config:/config
+      - bazarr_config:/config
       - ~/media/movies:/movies
       - ~/media/series:/tv
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
     networks:
       - homelab
+
+volumes:
+  bazarr_config:
 
 networks:
   homelab:

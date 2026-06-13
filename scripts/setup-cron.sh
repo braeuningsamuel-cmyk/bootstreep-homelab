@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – Cron-Jobs einrichten
+# Bootstreep Homelab – Cron-Jobs einrichten
 set -euo pipefail
 
 GREEN='\033[0;32m'

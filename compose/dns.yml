@@ -20,13 +20,13 @@ services:
       - "53:53/tcp"
       - "8081:80/tcp"
     environment:
-      TZ: Europe/Berlin
+      TZ: ${TIMEZONE:-Europe/Berlin}
       WEBPASSWORD: "${PIHOLE_PASS:-admin}"
       PIHOLE_DNS_: "127.0.0.1#5335"
       DNSSEC: "true"
     volumes:
-      - ./etc-pihole:/etc/pihole
-      - ./etc-dnsmasq.d:/etc/dnsmasq.d
+      - pihole_etc:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
     depends_on:
       - unbound
     healthcheck:
@@ -39,6 +39,10 @@ services:
       - NET_ADMIN
     networks:
       - homelab
+
+volumes:
+  pihole_etc:
+  pihole_dnsmasq:
 
 networks:
   homelab:

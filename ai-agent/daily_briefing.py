@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Atlas.Lab AI Agent – Daily Briefing
+Bootstreep AI Agent – Daily Briefing
 =====================================
 Erstellt eine tägliche Zusammenfassung mit:
 - Wetter

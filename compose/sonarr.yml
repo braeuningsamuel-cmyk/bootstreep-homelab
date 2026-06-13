@@ -6,15 +6,18 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      - ./config:/config
+      - sonarr_config:/config
       - ~/media/series:/tv
       - ~/downloads:/downloads
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
     networks:
       - homelab
+
+volumes:
+  sonarr_config:
 
 networks:
   homelab:

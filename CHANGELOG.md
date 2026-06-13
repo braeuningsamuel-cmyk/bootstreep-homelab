@@ -1,5 +1,28 @@
 # Changelog
 
+## v3.5.0 (2026-06-13) – Bootstreep Rename
+
+### Breaking Changes
+- Repository renamed from `atlaslab-homelab-bootstrap` to `bootstreep-homelab`
+- GitHub URL: https://github.com/braeuningsamuel-cmyk/bootstreep-homelab
+- Dashboard repo renamed from `atlaslab-dashboard` to `bootstreep-dashboard`
+- `ATLAS.LAB` branding → `BOOTSTREEP` throughout all files
+
+### Bugfixes (15 Audit Issues)
+- **Critical**: `dc_up()` now uses subshell `(cd ...)` – no longer kills CWD
+- **Critical**: `die()` function defined before first use (was undefined)
+- **Critical**: Caddyfile mount added to `docker-compose-all.yml` (Caddy was unconfigured)
+- **Critical**: `backup-all.sh` now loops over ALL named volumes (was only 2/18)
+- **High**: Dashboard: removed duplicate AMP row, added Samba/WireGuard/Syncthing 22000+21027
+- **High**: Dashboard port checker: added ports 8091, 21027, 22000
+- **High**: 9 compose files switched from bind mounts to named volumes (data location consistency)
+- **High**: 7 hardcoded `TZ: Europe/Berlin` → `${TIMEZONE:-Europe/Berlin}`
+- **Medium**: Section order: 12 (AI Agent) now before 13 (GPU) and 14 (Dashboard)
+- **Medium**: DNSSEC sigfail test checks for empty output (not 192.168.178.1)
+- **Medium**: `dpkg-reconfigure` uses `DEBIAN_FRONTEND=noninteractive`
+- **Medium**: Dashboard Caddyfile insertion uses portable heredoc (not GNU sed `\n`)
+- **Low**: Logging starts before pre-flight checks (catches all output)
+
 ## v3.4.0 (2026-06-13)
 
 ### Core Stability
@@ -48,7 +71,7 @@
 
 ## v3.0.0 (2026-06-10)
 
-Initial release based on Atlas.Lab Homelab Server Guide v3.3.
+Initial release based on Atlas.Lab Homelab Server Guide v3.3 (pre-rename).
 - 18 Docker services: Pi-hole, Unbound, Tor, Websurfx, Ollama, Jellyfin, SABnzbd, Sonarr, Radarr, Prowlarr, Bazarr, Nextcloud AIO, Syncthing, Uptime Kuma, Caddy, Samba, WireGuard/PiVPN, AMP
 - Single `bootstrap.sh` for Ubuntu 24.04 deployment
 - Cloud-init support

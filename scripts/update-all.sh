@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – Update-All Script
+# Bootstreep Homelab – Update-All Script
 # Führt System-Updates und alle Container-Updates durch
 set -euo pipefail
 

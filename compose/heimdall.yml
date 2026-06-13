@@ -7,13 +7,16 @@ services:
       - "8090:80"
       - "8091:443"
     volumes:
-      - ./config:/config
+      - heimdall_config:/config
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
     networks:
       - homelab
+
+volumes:
+  heimdall_config:
 
 networks:
   homelab:

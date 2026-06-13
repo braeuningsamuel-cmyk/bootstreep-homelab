@@ -71,7 +71,7 @@ Siehe: `docs/cloud-init-flow.md`
 
 Falls der Server neu aufgesetzt werden muss:
 ```bash
-git clone https://github.com/braeuningsamuel-cmyk/atlaslab-homelab-bootstrap.git
-cd atlaslab-homelab-bootstrap
+git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git
+cd bootstreep-homelab
 ./bootstrap.sh
 ```

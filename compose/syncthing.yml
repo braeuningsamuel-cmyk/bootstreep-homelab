@@ -8,12 +8,15 @@ services:
       - "22000:22000"
       - "21027:21027/udp"
     volumes:
-      - ./data:/var/syncthing
+      - syncthing_data:/var/syncthing
       - ~/vault:/var/syncthing/vault
     environment:
       - STGUIADDRESS=0.0.0.0:8384
     networks:
       - homelab
+
+volumes:
+  syncthing_data:
 
 networks:
   homelab:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Atlas.Lab Homelab – Backup-All Script (3-2-1-Regel)
+# Bootstreep Homelab – Backup-All Script (3-2-1-Regel)
 set -euo pipefail
 
 GREEN='\033[0;32m'
@@ -13,16 +13,12 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 BACKUP=~/backups/$(date +%Y%m%d-%H%M)
 mkdir -p "$BACKUP"
 
-log "Ollama-Daten sichern..."
-# Ermittle tatsächlichen Volume-Namen (abhängig vom Deployment: compose vs docker-compose-all)
-OLLAMA_VOLUME=$(docker volume ls -q | grep -E 'ollama(_ollama)?_data' | head -1) && \
-  docker run --rm -v "$OLLAMA_VOLUME":/data -v "$BACKUP":/backup alpine tar czf /backup/ollama.tar.gz -C /data . 2>/dev/null || \
-  warn "Ollama-Volume nicht gefunden"
-
-log "Pi-hole-Daten sichern..."
-PIHOLE_VOLUME=$(docker volume ls -q | grep -E '(dns_)?pihole_etc' | head -1) && \
-  docker run --rm -v "$PIHOLE_VOLUME":/data -v "$BACKUP":/backup alpine tar czf /backup/pihole.tar.gz -C /data . 2>/dev/null || \
-  warn "Pi-hole-Volume nicht gefunden (ggf. kein named volume)"
+log "Alle Docker-Volumes sichern..."
+for volume in $(docker volume ls -q); do
+    name="$(echo "$volume" | tr '/' '_')"
+    docker run --rm -v "$volume":/data -v "$BACKUP":/backup alpine tar czf "/backup/${name}.tar.gz" -C /data . 2>/dev/null || \
+        warn "Volume $volume konnte nicht gesichert werden"
+done
 
 log "Pi-hole Teleporter-Export..."
 docker exec pihole pihole -a -t "$BACKUP/teleporter.tar.gz" 2>/dev/null || warn "Pi-hole Teleporter fehlgeschlagen"

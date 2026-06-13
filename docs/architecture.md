@@ -2,7 +2,7 @@
 
 ## Overview
 
-Das Atlas.Lab Homelab Bootstrap besteht aus mehreren Schichten, die zusammen ein vollständiges Homelab auf Ubuntu 24.04 aufbauen.
+Das Bootstreep Homelab Bootstrap besteht aus mehreren Schichten, die zusammen ein vollständiges Homelab auf Ubuntu 24.04 aufbauen.
 
 ## Layers
 

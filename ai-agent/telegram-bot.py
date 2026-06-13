@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Atlas.Lab AI Agent – Telegram Bot
+Bootstreep AI Agent – Telegram Bot
 ===================================
 Dein persönlicher Server-Assistent via Telegram.
 

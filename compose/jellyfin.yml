@@ -6,12 +6,15 @@ services:
     ports:
       - "8096:8096"
     volumes:
-      - ./config:/config
+      - jellyfin_config:/config
       - ~/media:/media:ro
     devices:
       - "/dev/dri:/dev/dri"
     networks:
       - homelab
+
+volumes:
+  jellyfin_config:
 
 networks:
   homelab:
