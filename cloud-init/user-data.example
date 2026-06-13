@@ -28,5 +28,5 @@ packages:
 
 # bootstrap.sh ausführen
 runcmd:
-  - git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git /opt/bootstreep-homelab
+  - git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-homelab.git /opt/bootstreep-homelab
   - cd /opt/bootstreep-homelab && chmod +x bootstrap.sh && ./bootstrap.sh

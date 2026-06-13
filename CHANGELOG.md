@@ -40,7 +40,7 @@
 
 ### Breaking Changes
 - Repository renamed from `atlaslab-homelab-bootstrap` to `bootstreep-homelab`
-- GitHub URL: https://github.com/braeuningsamuel-cmyk/bootstreep-homelab
+- GitHub URL: https://github.com/YOUR_GITHUB_USERNAME/bootstreep-homelab
 - Dashboard repo renamed from `atlaslab-dashboard` to `bootstreep-dashboard`
 - `ATLAS.LAB` branding → `BOOTSTREEP` throughout all files
 

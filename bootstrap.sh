@@ -724,15 +724,15 @@ section_13_gpu() {
 section_14_dashboard() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 14.  ATLAS.LAB DASHBOARD                          ║"
+    echo "║ 14.  BOOTSTREEP DASHBOARD                        ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Dashboard-Repository klonen..."
-    if [ -d ~/atlaslab-dashboard/.git ]; then
+    if [ -d ~/bootstreep-dashboard/.git ]; then
         log "Dashboard bereits vorhanden – aktualisiere..."
-        cd ~/atlaslab-dashboard && git pull
+        cd ~/bootstreep-dashboard && git pull
     else
-        git clone https://github.com/braeuningsamuel-cmyk/bootstreep-dashboard.git ~/bootstreep-dashboard
+        git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-dashboard.git ~/bootstreep-dashboard
     fi
 
     log "Caddy-Route für Dashboard konfigurieren..."
@@ -758,7 +758,7 @@ section_14_dashboard() {
     fi
 
     log "Dashboard bereit: http://$SERVER_IP:80 (via Caddy) oder Desktop-App"
-    warn "→ Desktop-App bauen: git clone https://github.com/braeuningsamuel-cmyk/bootstreep-dashboard.git"
+    warn "→ Desktop-App bauen: git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-dashboard.git"
     warn "→ Dann: npm install && npm run tauri dev"
 }
 

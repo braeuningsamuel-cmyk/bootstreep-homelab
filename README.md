@@ -116,7 +116,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub admin@192.168.178.20
 Dann auf dem Server:
 
 ```bash
-git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git
+git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-homelab.git
 cd bootstreep-homelab
 chmod +x bootstrap.sh
 ./bootstrap.sh
