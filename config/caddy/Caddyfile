@@ -1,0 +1,18 @@
+cloud.deine-domain.de {
+    import security_headers
+    reverse_proxy nextcloud-aio:8080
+}
+
+media.deine-domain.de {
+    import security_headers
+    reverse_proxy jellyfin:8096
+}
+
+(security_headers) {
+    header {
+        Strict-Transport-Security "max-age=63072000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+    }
+}

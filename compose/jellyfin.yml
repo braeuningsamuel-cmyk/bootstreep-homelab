@@ -1,0 +1,18 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./config:/config
+      - ~/media:/media:ro
+    devices:
+      - "/dev/dri:/dev/dri"
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

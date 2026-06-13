@@ -1,0 +1,37 @@
+services:
+  unbound:
+    image: mvance/unbound:latest
+    container_name: unbound
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5335:53/udp"
+      - "127.0.0.1:5335:53/tcp"
+    volumes:
+      - ./unbound.conf:/opt/unbound/unbound.conf:ro
+    networks:
+      - homelab
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8081:80/tcp"
+    environment:
+      TZ: Europe/Berlin
+      WEBPASSWORD: "${PIHOLE_PASS:-admin}"
+      PIHOLE_DNS_: "127.0.0.1#5335"
+      DNSSEC: "true"
+    volumes:
+      - ./etc-pihole:/etc/pihole
+      - ./etc-dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

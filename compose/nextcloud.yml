@@ -1,0 +1,17 @@
+services:
+  nextcloud-aio:
+    image: nextcloud/all-in-one:latest
+    container_name: nextcloud-aio
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+      - "9443:8443"
+    volumes:
+      - /opt/nextcloud-data:/var/lib/docker/volumes/nextcloud-aio
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

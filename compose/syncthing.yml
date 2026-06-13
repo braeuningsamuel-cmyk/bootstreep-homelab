@@ -1,0 +1,20 @@
+services:
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    restart: unless-stopped
+    ports:
+      - "8384:8384"
+      - "22000:22000"
+      - "21027:21027/udp"
+    volumes:
+      - ./data:/var/syncthing
+      - ~/vault:/var/syncthing/vault
+    environment:
+      - STGUIADDRESS=0.0.0.0:8384
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

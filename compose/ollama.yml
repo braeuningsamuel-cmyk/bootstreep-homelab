@@ -1,0 +1,22 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 14g
+    networks:
+      - homelab
+
+volumes:
+  ollama_data:
+
+networks:
+  homelab:
+    external: true

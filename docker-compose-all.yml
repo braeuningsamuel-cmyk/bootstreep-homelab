@@ -1,0 +1,231 @@
+# Atlas.Lab Homelab – Alle Dienste (Merged)
+# Usage: docker compose -f docker-compose-all.yml up -d
+#
+# Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:
+# - Ollama: volumes Pfad anpassen
+# - Nextcloud: /opt/nextcloud-data muss existieren
+# - Websurfx: muss vorher gebaut werden (docker build)
+# - Hermes: muss vorher geklont sein
+
+x-common: &common
+  restart: unless-stopped
+  networks:
+    - homelab
+
+services:
+  # ─── DNS ────────────────────────────────────────────────
+  unbound:
+    <<: *common
+    image: mvance/unbound:latest
+    container_name: unbound
+    ports:
+      - "127.0.0.1:5335:53/udp"
+      - "127.0.0.1:5335:53/tcp"
+    volumes:
+      - ./config/dns/unbound.conf:/opt/unbound/unbound.conf:ro
+
+  pihole:
+    <<: *common
+    image: pihole/pihole:latest
+    container_name: pihole
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8081:80/tcp"
+    environment:
+      TZ: Europe/Berlin
+      WEBPASSWORD: "${PIHOLE_PASS:-admin}"
+      PIHOLE_DNS_: "127.0.0.1#5335"
+      DNSSEC: "true"
+    volumes:
+      - pihole_etc:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - unbound
+
+  # ─── PRIVATSPHÄRE ────────────────────────────────────────
+  tor:
+    <<: *common
+    image: peterdavehello/tor-socks-proxy:latest
+    container_name: tor
+    ports:
+      - "127.0.0.1:9050:9150"
+
+  websurfx:
+    <<: *common
+    image: websurfx:local
+    container_name: websurfx
+    ports:
+      - "8080:8080"
+    depends_on:
+      - tor
+
+  # ─── KI ──────────────────────────────────────────────────
+  ollama:
+    <<: *common
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 14g
+
+  # ─── MEDIEN ──────────────────────────────────────────────
+  jellyfin:
+    <<: *common
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin_config:/config
+      - ~/media:/media:ro
+    devices:
+      - "/dev/dri:/dev/dri"
+
+  sonarr:
+    <<: *common
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    ports:
+      - "8989:8989"
+    volumes:
+      - sonarr_config:/config
+      - ~/media/series:/tv
+      - ~/downloads:/downloads
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+
+  radarr:
+    <<: *common
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    ports:
+      - "7878:7878"
+    volumes:
+      - radarr_config:/config
+      - ~/media/movies:/movies
+      - ~/downloads:/downloads
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+
+  prowlarr:
+    <<: *common
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    ports:
+      - "9696:9696"
+    volumes:
+      - prowlarr_config:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+
+  bazarr:
+    <<: *common
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    ports:
+      - "6767:6767"
+    volumes:
+      - bazarr_config:/config
+      - ~/media/movies:/movies
+      - ~/media/series:/tv
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+
+  # ─── CLOUD & SYNC ────────────────────────────────────────
+  nextcloud-aio:
+    <<: *common
+    image: nextcloud/all-in-one:latest
+    container_name: nextcloud-aio
+    ports:
+      - "8082:8080"
+      - "9443:8443"
+    volumes:
+      - /opt/nextcloud-data:/var/lib/docker/volumes/nextcloud-aio
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  syncthing:
+    <<: *common
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    ports:
+      - "8384:8384"
+      - "22000:22000"
+      - "21027:21027/udp"
+    volumes:
+      - syncthing_data:/var/syncthing
+      - ~/vault:/var/syncthing/vault
+    environment:
+      - STGUIADDRESS=0.0.0.0:8384
+
+  # ─── MONITORING ──────────────────────────────────────────
+  uptime-kuma:
+    <<: *common
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+
+  # ─── DASHBOARD ────────────────────────────────────────────
+  heimdall:
+    <<: *common
+    image: lscr.io/linuxserver/heimdall:latest
+    container_name: heimdall
+    ports:
+      - "8090:80"
+      - "8091:443"
+    volumes:
+      - heimdall_config:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+
+  # ─── REVERSE PROXY ───────────────────────────────────────
+  caddy:
+    <<: *common
+    image: caddy:latest
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pihole_etc:
+  pihole_dnsmasq:
+  ollama_data:
+  jellyfin_config:
+  sonarr_config:
+  radarr_config:
+  prowlarr_config:
+  bazarr_config:
+  syncthing_data:
+  uptime_kuma_data:
+  heimdall_config:
+  caddy_data:
+  caddy_config:
+
+networks:
+  homelab:
+    external: true

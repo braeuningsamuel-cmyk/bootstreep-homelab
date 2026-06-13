@@ -1,0 +1,15 @@
+services:
+  websurfx:
+    image: websurfx:local
+    container_name: websurfx
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - homelab
+    depends_on:
+      - tor
+
+networks:
+  homelab:
+    external: true

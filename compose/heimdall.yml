@@ -1,0 +1,20 @@
+services:
+  heimdall:
+    image: lscr.io/linuxserver/heimdall:latest
+    container_name: heimdall
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+      - "8091:443"
+    volumes:
+      - ./config:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

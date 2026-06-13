@@ -1,0 +1,13 @@
+services:
+  tor:
+    image: peterdavehello/tor-socks-proxy:latest
+    container_name: tor
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9050:9150"
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true
