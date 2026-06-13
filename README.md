@@ -10,7 +10,7 @@ chmod +x bootstrap.sh && ./bootstrap.sh
 
 ## Übersicht
 
-Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu 24.04 Homelab-Server. Es installiert und konfiguriert automatisch **18+ Dienste** aus dem [Atlas.Lab Homelab Server Guide v3.3](https://github.com/braeuningsamuel-cmyk/atlaslab-homelab-bootstrap) – plus einen **KI-Assistenten per Telegram**, inspiriert von AI-Agent-Plattformen wie GenSpark Claw.
+Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu 24.04 Homelab-Server. Es installiert und konfiguriert automatisch **21+ Dienste** aus dem [Atlas.Lab Homelab Server Guide v3.3](https://github.com/braeuningsamuel-cmyk/atlaslab-homelab-bootstrap) – plus einen **KI-Assistenten per Telegram**, inspiriert von AI-Agent-Plattformen wie GenSpark Claw.
 
 | Komponente | Beschreibung |
 |---|---|
@@ -292,4 +292,4 @@ MIT – siehe [LICENSE](LICENSE).
 
 ---
 
-*Atlas.Lab Homelab Bootstrap v3.3 – Basierend auf dem Atlas.Lab Homelab Server Guide*
+*Atlas.Lab Homelab Bootstrap v3.4.0 – Basierend auf dem Atlas.Lab Homelab Server Guide*

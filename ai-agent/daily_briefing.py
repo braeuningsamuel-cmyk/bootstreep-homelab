@@ -27,7 +27,6 @@ from dotenv import load_dotenv
 load_dotenv(Path.home() / 'ai-agent' / '.env')
 
 import aiohttp
-import requests
 
 SERVER_NAME = os.getenv('SERVER_NAME', 'AtlasLab')
 NEWS_RSS_URLS = os.getenv('NEWS_RSS_URLS', 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml,https://feeds.bbci.co.uk/news/rss.xml')

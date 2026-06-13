@@ -1,4 +1,4 @@
-# Atlas.Lab Homelab – Alle Dienste (Merged)
+# Atlas.Lab Homelab – Alle Dienste (Merged) v3.4.0
 # Usage: docker compose -f docker-compose-all.yml up -d
 #
 # Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:

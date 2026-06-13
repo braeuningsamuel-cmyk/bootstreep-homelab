@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Atlas.Lab Homelab Bootstrap v3.3
+# Atlas.Lab Homelab Bootstrap v3.4.0
 # Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
 #
 # Usage:
@@ -53,7 +53,7 @@ dc_up() {
     return 1
 }
 
-info "Atlas.Lab Homelab Bootstrap v3.3"
+info "Atlas.Lab Homelab Bootstrap v3.4.0"
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
 echo ""
@@ -624,8 +624,8 @@ main() {
 
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║     Atlas.Lab Homelab Bootstrap v3.3             ║"
-    echo "║     Automatischer Setup für Ubuntu 24.04         ║"
+    echo "║     Atlas.Lab Homelab Bootstrap v3.4.0             ║"
+    echo "║     Ubuntu 24.04 – Ein Befehl, fertiges Homelab    ║"
     echo "╚══════════════════════════════════════════════════╝"
     echo ""
 
