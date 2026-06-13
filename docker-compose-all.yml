@@ -1,4 +1,4 @@
-# Bootstreep Homelab – Alle Dienste (Merged) v3.5.0
+# Bootstreep Homelab – Alle Dienste (Merged) v3.6.0
 # Usage: docker compose -f docker-compose-all.yml up -d
 #
 # Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:
@@ -9,6 +9,8 @@
 
 x-common: &common
   restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
   networks:
     - homelab
 
@@ -50,6 +52,11 @@ services:
       - NET_ADMIN
     depends_on:
       - unbound
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ─── KI-WORKFLOWS ────────────────────────────────────────
   n8n:
@@ -64,6 +71,15 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - N8N_HOST=localhost
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ─── KI-CHAT-UI ──────────────────────────────────────────
   open-webui:
@@ -128,6 +144,12 @@ services:
       resources:
         limits:
           memory: 14g
+          cpus: "8"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # ─── DOWNLOAD-CLIENT ─────────────────────────────────────
   sabnzbd:
@@ -157,6 +179,16 @@ services:
       - ~/media:/media:ro
     devices:
       - "/dev/dri:/dev/dri"
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "4"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
 
   sonarr:
     <<: *common
@@ -313,6 +345,15 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   pihole_etc:

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v3.5.0
+# Bootstreep Homelab Bootstrap v3.6.0
 # Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
 #
 # Usage:
@@ -58,10 +58,38 @@ dc_up() {
     return 1
 }
 
+# Paralleler Start für unabhängige Services (Performance)
+dc_up_parallel() {
+    local pids=()
+    local services=("$@")
+    local cwd
+    cwd="$(pwd)"
+    for svc in "${services[@]}"; do
+        local dir="${svc%%:*}"
+        local name="${svc#*:}"
+        (cd ~/docker/"$dir" && docker compose up -d) 2>/dev/null &
+        pids+=($!)
+        log "$name startet parallel..."
+    done
+    local failed=0
+    for pid in "${pids[@]}"; do
+        if ! wait "$pid"; then
+            failed=$((failed + 1))
+        fi
+    done
+    cd "$cwd" 2>/dev/null || true
+    if [ "$failed" -gt 0 ]; then
+        warn "$failed von ${#services[@]} parallelen Starts fehlgeschlagen."
+        return 1
+    fi
+    log "Alle ${#services[@]} Services parallel gestartet."
+    return 0
+}
+
 # Logging sofort starten (auch für Pre-Flight)
 LOG_FILE="${HOME_DIR:-$HOME}/bootstrap.log"
 exec &> >(tee -a "$LOG_FILE")
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.5.0 gestartet"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.6.0 gestartet"
 
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
@@ -175,6 +203,33 @@ section_2_docker() {
     log "Docker Compose Version:"
     docker compose version
 
+    # Docker Daemon Optimierung (Security + Performance)
+    log "Docker Daemon konfigurieren (Security + Performance)..."
+    sudo mkdir -p /etc/docker
+    sudo tee /etc/docker/daemon.json >/dev/null <<'DJON'
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2",
+  "live-restore": true,
+  "userland-proxy": false,
+  "no-new-privileges": true,
+  "default-ulimits": {
+    "nofile": {
+      "Name": "nofile",
+      "Hard": 65536,
+      "Soft": 65536
+    }
+  }
+}
+DJON
+    sudo systemctl daemon-reload
+    sudo systemctl restart docker
+    log "Docker Daemon optimiert (json-file logging, overlay2, live-restore, no-new-privileges)."
+
     if docker network inspect homelab &>/dev/null 2>&1; then
         log "Docker-Netzwerk 'homelab' existiert bereits."
     else
@@ -217,8 +272,23 @@ section_3_ssh_harden() {
         echo "PermitRootLogin no" | sudo tee -a "$SSH_CFG" >/dev/null
     fi
 
+    # Schwache Algorithmen deaktivieren
+    if ! grep -q "^Ciphers" "$SSH_CFG" 2>/dev/null; then
+        {
+            echo ""
+            echo "# Security: Only strong ciphers, MACs, and key exchange"
+            echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+            echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
+            echo "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
+            echo "LoginGraceTime 30"
+            echo "MaxAuthTries 3"
+            echo "ClientAliveInterval 300"
+            echo "ClientAliveCountMax 2"
+        } | sudo tee -a "$SSH_CFG" >/dev/null
+    fi
+
     sudo systemctl restart ssh
-    log "SSH-Dienst neugestartet."
+    log "SSH-Dienst neugestartet (Hardening: schwache Algorithmen deaktiviert)."
 
     log "SSH-Client-Konfiguration bereitstellen..."
     mkdir -p ~/.ssh
@@ -262,9 +332,33 @@ section_4_firewall() {
     # WireGuard VPN
     sudo ufw allow 51820/udp
 
+    # UFW Rate Limiting für SSH
+    sudo ufw limit ssh/tcp comment 'SSH rate limit'
+
     log "UFW aktivieren..."
     sudo ufw --force enable
     sudo ufw status numbered
+
+    # Fail2Ban SSH Jail konfigurieren
+    log "Fail2Ban SSH-Jail konfigurieren..."
+    sudo tee /etc/fail2ban/jail.local >/dev/null <<'EOF2'
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 3
+backend = systemd
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 3600
+EOF2
+    sudo systemctl enable fail2ban 2>/dev/null || true
+    sudo systemctl restart fail2ban 2>/dev/null || true
+    log "Fail2Ban aktiviert (SSH Jail: 3 Versuche → 1h Ban)."
 }
 
 # ─── 5. DNS (Pi-hole + Unbound) ──────────────────────────────────────────────
@@ -678,7 +772,7 @@ main() {
 
     echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║     BOOTSTREEP HOMELAB BOOTSTRAP v3.5.0            ║"
+echo "║     BOOTSTREEP HOMELAB BOOTSTRAP v3.6.0            ║"
 echo "╚══════════════════════════════════════════════════╝"
     echo ""
 

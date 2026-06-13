@@ -1,5 +1,29 @@
 # Changelog
 
+## v3.6.0 (2026-06-13) – Security & Performance Hardening
+
+### Security
+- **Compose**: `security_opt: [no-new-privileges:true]` + `cap_drop: [ALL]` auf alle Container
+- **SSH**: Schwache Ciphers/MACs/KEX deaktiviert (nur chacha20-poly1305, aes256-gcm, curve25519)
+- **SSH**: LoginGraceTime 30s, MaxAuthTries 3, ClientAliveInterval 300s
+- **Fail2Ban**: SSH-Jail aktiviert (3 Versuche → 1h Ban)
+- **UFW**: SSH Rate Limiting (`ufw limit ssh`)
+- **Docker Daemon**: `no-new-privileges: true`, `userland-proxy: false`, `live-restore: true`
+- **Dashboard CSP**: `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`
+- **Dashboard**: `withGlobalTauri: false` (API nicht global exponiert)
+- **Logging**: `json-file` mit `max-size: 10m` + `max-file: 3` auf allen kritischen Services
+
+### Performance
+- **Resource Limits**: Ollama 14g/8 CPU, Jellyfin 4g/4 CPU, n8n 1g, Caddy 256m
+- **Docker Daemon**: `overlay2` storage driver, `65536` nofile ulimits
+- **Parallel Start**: `dc_up_parallel()` für unabhängige Services
+- **Bootstrap**: Docker Daemon JSON-Konfiguration (logging, storage, ulimits)
+
+### Compose
+- Alle 21 Services im merged File haben jetzt Security-Baseline
+- Resource Limits für Ollama, Jellyfin, n8n, Caddy
+- Logging-Konfiguration für alle kritischen Container
+
 ## v3.5.0 (2026-06-13) – Bootstreep Rename
 
 ### Breaking Changes
