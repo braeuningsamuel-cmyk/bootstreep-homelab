@@ -20,7 +20,7 @@ OLLAMA_VOLUME=$(docker volume ls -q | grep -E 'ollama(_ollama)?_data' | head -1)
   warn "Ollama-Volume nicht gefunden"
 
 log "Pi-hole-Daten sichern..."
-PIHOLE_VOLUME=$(docker volume ls -q | grep -E '(dns_)?(pihole_)?etc-pihole' | head -1) && \
+PIHOLE_VOLUME=$(docker volume ls -q | grep -E '(dns_)?pihole_etc' | head -1) && \
   docker run --rm -v "$PIHOLE_VOLUME":/data -v "$BACKUP":/backup alpine tar czf /backup/pihole.tar.gz -C /data . 2>/dev/null || \
   warn "Pi-hole-Volume nicht gefunden (ggf. kein named volume)"
 
