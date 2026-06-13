@@ -9,6 +9,8 @@ services:
     volumes:
       - ~/hermes:/app
     command: sh -c "npm install && npm run build && npm start"
+    depends_on:
+      - ollama
     networks:
       - homelab
 

@@ -185,7 +185,6 @@ Dieses Bootstrap-Setup ist designed, um mit AI-Agent-Plattformen wie **GenSpark 
 ```
 atlaslab-homelab-bootstrap/
 ├── bootstrap.sh              # Master-Setup-Script
-├── bootstrap.sh              # Master-Setup-Script
 ├── docker-compose-all.yml    # Alle Dienste in einer Datei
 ├── compose/                  # Docker Compose Definitionen
 │   ├── dns.yml               # Pi-hole + Unbound

@@ -33,13 +33,19 @@ services:
       - "53:53/tcp"
       - "8081:80/tcp"
     environment:
-      TZ: Europe/Berlin
+      TZ: ${TIMEZONE:-Europe/Berlin}
       WEBPASSWORD: "${PIHOLE_PASS:-admin}"
       PIHOLE_DNS_: "127.0.0.1#5335"
       DNSSEC: "true"
     volumes:
       - pihole_etc:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
+    healthcheck:
+      test: ["CMD", "sh", "-c", "dig +short google.com @127.0.0.1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     cap_add:
       - NET_ADMIN
     depends_on:
@@ -70,6 +76,21 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - open_webui_data:/app/backend/data
+    depends_on:
+      - ollama
+
+  hermes:
+    <<: *common
+    image: node:20-alpine
+    container_name: hermes
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    volumes:
+      - ~/hermes:/app
+    command: sh -c "npm install && npm run build && npm start"
+    depends_on:
+      - ollama
 
   # ─── PRIVATSPHÄRE ────────────────────────────────────────
   tor:
@@ -97,6 +118,12 @@ services:
       - "127.0.0.1:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     deploy:
       resources:
         limits:
@@ -116,7 +143,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
 
   # ─── MEDIEN ──────────────────────────────────────────────
   jellyfin:
@@ -144,7 +171,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
 
   radarr:
     <<: *common
@@ -159,7 +186,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
 
   prowlarr:
     <<: *common
@@ -172,7 +199,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
 
   bazarr:
     <<: *common
@@ -187,7 +214,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
 
   # ─── CLOUD & SYNC ────────────────────────────────────────
   nextcloud-aio:
@@ -238,7 +265,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TIMEZONE:-Europe/Berlin}
 
   # ─── REVERSE PROXY ───────────────────────────────────────
   caddy:
@@ -249,9 +276,14 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   pihole_etc:

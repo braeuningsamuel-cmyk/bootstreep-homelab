@@ -154,6 +154,15 @@ section_2_docker() {
         warn "→ Für Docker-Zugriff: 'newgrp docker' in neuer Shell oder aus-/einloggen."
     fi
 
+    if ! docker info &>/dev/null; then
+        if sudo docker info &>/dev/null; then
+            warn "Docker-Socket nur per sudo erreichbar – versuche newgrp docker ..."
+            newgrp docker
+        else
+            die "Docker-Daemon läuft nicht oder nicht erreichbar. Bitte prüfen: systemctl status docker"
+        fi
+    fi
+
     log "Docker Compose Version:"
     docker compose version
 
@@ -271,7 +280,7 @@ section_5_dns() {
     cp compose/dns.yml ~/docker/dns/compose.yml
 
     log "DNS-Container starten..."
-    cd ~/docker/dns && docker compose up -d
+    dc_up dns "DNS (Pi-hole + Unbound)"
 
     log "Warte auf Pi-hole (max 30s)..."
     local pihole_ready=0
@@ -310,7 +319,7 @@ section_6_privacy() {
 
     log "Tor-SOCKS5-Proxy starten..."
     cp compose/tor.yml ~/docker/tor/compose.yml
-    cd ~/docker/tor && docker compose up -d
+    dc_up tor "Tor-SOCKS5-Proxy"
 
     log "Websurfx bauen und starten..."
     if [ ! -d ~/docker/websurfx/src ]; then
@@ -325,7 +334,7 @@ section_6_privacy() {
     fi
 
     cp compose/websurfx.yml ~/docker/websurfx/compose.yml
-    cd ~/docker/websurfx && docker compose up -d
+    dc_up websurfx "Websurfx"
 }
 
 # ─── 7. OLLAMA + HERMES (KI) ────────────────────────────────────────────────
@@ -337,14 +346,14 @@ section_7_ai() {
 
     log "Ollama starten..."
     cp compose/ollama.yml ~/docker/ollama/compose.yml
-    cd ~/docker/ollama && docker compose up -d
+    dc_up ollama "Ollama"
 
     log "KI-Modelle herunterladen (ca. 15–25 Min)..."
-    docker exec ollama ollama pull mistral:7b 2>/dev/null || true
-    docker exec ollama ollama pull llama3.2:3b 2>/dev/null || true
-    docker exec ollama ollama pull deepseek-coder:6.7b 2>/dev/null || true
-    docker exec ollama ollama pull llama3.2:8b 2>/dev/null || true
-    docker exec ollama ollama pull phi4:14b 2>/dev/null || true
+    MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
+    for model in $MODELS; do
+        log "→ Pulling $model ..."
+        docker exec ollama ollama pull "$model" 2>/dev/null || log "⚠️  $model pull fehlgeschlagen (wird später erneut versucht)"
+    done
 
     log "Hermes KI-Chat-Oberfläche per Docker starten..."
     if [ ! -d ~/hermes ]; then
@@ -353,12 +362,12 @@ section_7_ai() {
         log "→ .env-Datei in ~/hermes/.env – ggf. API-Keys eintragen."
     fi
     cp compose/hermes.yml ~/docker/hermes/compose.yml
-    cd ~/docker/hermes && docker compose up -d
+    dc_up hermes "Hermes"
     log "→ Hermes läuft auf http://$SERVER_IP:3000"
 
     log "Open WebUI (alternative Chat-Oberfläche) starten..."
     cp compose/open-webui.yml ~/docker/open-webui/compose.yml
-    cd ~/docker/open-webui && docker compose up -d
+    dc_up open-webui "Open WebUI"
     log "→ Open WebUI läuft auf http://$SERVER_IP:3002"
 }
 
@@ -375,21 +384,21 @@ section_8_media() {
 
     log "Jellyfin starten..."
     cp compose/jellyfin.yml ~/docker/jellyfin/compose.yml
-    cd ~/docker/jellyfin && docker compose up -d
+    dc_up jellyfin "Jellyfin"
 
     log "Download-Client (SABnzbd) starten..."
     cp compose/sabnzbd.yml ~/docker/sabnzbd/compose.yml
-    cd ~/docker/sabnzbd && docker compose up -d
+    dc_up sabnzbd "SABnzbd"
 
     log "Arr-Stack starten (Sonarr, Radarr, Prowlarr, Bazarr)..."
     for service in sonarr radarr prowlarr bazarr; do
         cp "compose/$service.yml" ~/docker/"$service"/compose.yml
-        cd ~/docker/"$service" && docker compose up -d
+        dc_up "$service" "$service"
     done
 
     log "n8n Workflow-Automation starten..."
     cp compose/n8n.yml ~/docker/n8n/compose.yml
-    cd ~/docker/n8n && docker compose up -d
+    dc_up n8n "n8n"
 }
 
 # ─── 9. NEXTCLOUD + SYNCTHING (CLOUD + SYNC) ────────────────────────────────
@@ -404,14 +413,14 @@ section_9_cloud() {
     sudo chown -R "$USER":"$USER" /opt/nextcloud-data
 
     cp compose/nextcloud.yml ~/docker/nextcloud/compose.yml
-    cd ~/docker/nextcloud && docker compose up -d
+    dc_up nextcloud "Nextcloud AIO"
 
     log "Nextcloud-Passwort abrufen..."
     docker logs nextcloud-aio 2>&1 | grep "password" || warn "Initialpasswort prüfen: docker logs nextcloud-aio"
 
     log "Syncthing starten..."
     cp compose/syncthing.yml ~/docker/syncthing/compose.yml
-    cd ~/docker/syncthing && docker compose up -d
+    dc_up syncthing "Syncthing"
 }
 
 # ─── 10. SAMBA + GAMES + VPN (ZUGRIFF) ───────────────────────────────────────
@@ -449,12 +458,12 @@ EOSMB
     # Uptime Kuma
     log "Uptime Kuma (Monitoring) starten..."
     cp compose/uptime-kuma.yml ~/docker/uptime-kuma/compose.yml
-    cd ~/docker/uptime-kuma && docker compose up -d
+    dc_up uptime-kuma "Uptime Kuma"
 
     # Heimdall Dashboard
     log "Heimdall Dashboard starten..."
     cp compose/heimdall.yml ~/docker/heimdall/compose.yml
-    cd ~/docker/heimdall && docker compose up -d
+    dc_up heimdall "Heimdall"
 
     # Cron-Jobs für automatisierte Wartung
     log "Cron-Jobs einrichten..."
@@ -469,7 +478,7 @@ EOSMB
     log "Caddy Reverse-Proxy starten..."
     cp compose/caddy.yml ~/docker/caddy/compose.yml
     cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile 2>/dev/null || true
-    cd ~/docker/caddy && docker compose up -d
+    dc_up caddy "Caddy"
 
     warn "Game-Server (AMP) manuell installieren:"
     warn "  bash <(wget -qO- https://getamp.sh)"
@@ -622,13 +631,13 @@ main() {
 
     # COMPOSE- und CONFIG-Dateien ins Home kopieren
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    # Config-Dateien zentral bereitstellen
+    log "Konfigurationsdateien nach ~/config/ kopieren..."
     cp -r "$SCRIPT_DIR/config" ~/ 2>/dev/null || true
-    # Utility-Scripts kopieren
+    log "Utility-Scripts nach ~/scripts/ kopieren..."
     mkdir -p ~/scripts
     cp "$SCRIPT_DIR"/scripts/*.sh ~/scripts/ 2>/dev/null || true
     chmod +x ~/scripts/*.sh 2>/dev/null || true
-    # docker-compose-all.yml für merged Deployment bereitstellen
+    log "Merged Compose-Datei nach ~/docker/ kopieren..."
     cp "$SCRIPT_DIR/docker-compose-all.yml" ~/docker/ 2>/dev/null || true
 
     [ -z "${STEP1:-}" ] && { section_1_system;   save_progress "STEP1"; }
