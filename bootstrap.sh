@@ -34,15 +34,66 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 info() { echo -e "${CYAN}[i]${NC} $1"; }
 err()  { echo -e "${RED}[✗]${NC} $1"; }
 
-# ─── Prüfungen ────────────────────────────────────────────────────────────────
-if [ "$EUID" -eq 0 ]; then
-    err "Bitte nicht als root ausführen. Der Script verwendet sudo bei Bedarf."
-    exit 1
-fi
+# ─── Docker-Helfer mit Retry ────────────────────────────────────────────────
+dc_up() {
+    local dir="$1"
+    local name="$2"
+    local max_attempts=3
+    local attempt=1
+    while [ "$attempt" -le "$max_attempts" ]; do
+        if cd ~/docker/"$dir" && docker compose up -d 2>/dev/null; then
+            log "$name gestartet."
+            return 0
+        fi
+        warn "$name: Startversuch $attempt/$max_attempts fehlgeschlagen – warte 5s..."
+        sleep 5
+        attempt=$((attempt + 1))
+    done
+    err "$name konnte nach $max_attempts Versuchen nicht gestartet werden."
+    return 1
+}
 
 info "Atlas.Lab Homelab Bootstrap v3.3"
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
+echo ""
+
+# ─── Pre-Flight Checks ──────────────────────────────────────────────────────
+pre_flight_checks() {
+    local errors=0
+
+    if [ "$EUID" -eq 0 ]; then
+        err "Bitte nicht als root ausführen. Der Script verwendet sudo bei Bedarf."
+        errors=$((errors + 1))
+    fi
+
+    if ! echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+        err "SERVER_IP='$SERVER_IP' ist keine gültige IP-Adresse."
+        errors=$((errors + 1))
+    fi
+
+    for cmd in curl git wget; do
+        if ! command -v "$cmd" &>/dev/null; then
+            warn "'$cmd' nicht gefunden – wird in Step 1 installiert."
+        fi
+    done
+
+    # Speicherplatz prüfen (mindestens 20GB frei)
+    local available
+    available=$(df / --output=avail 2>/dev/null | tail -1)
+    if [ -n "$available" ] && [ "$available" -lt 20971520 ]; then
+        warn "Weniger als 20GB freier Speicher ($((available / 1024 / 1024)) GB) – Modell-Downloads könnten fehlschlagen."
+    fi
+
+    if [ "$errors" -gt 0 ]; then
+        err "$errors Fehler gefunden. Script wird abgebrochen."
+        exit 1
+    fi
+
+    log "Pre-Flight Checks bestanden."
+}
+pre_flight_checks
+
 echo ""
 
 # ─── 1. SYSTEM-GRUNDLAGEN ─────────────────────────────────────────────────────
@@ -53,18 +104,19 @@ section_1_system() {
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Paketquellen aktualisieren..."
-    sudo apt update && sudo apt upgrade -y
+    sudo apt update -y 2>&1 | tail -3 || warn "apt update hatte Warnungen"
+    sudo apt upgrade -y 2>&1 | tail -5 || warn "apt upgrade hatte Warnungen"
 
     log "Wichtige Pakete installieren..."
     sudo apt install -y curl git wget htop nano ufw fail2ban \
         unattended-upgrades ca-certificates gnupg lsb-release \
-        net-tools iperf3 smartmontools dnsutils nodejs npm
+        net-tools iperf3 smartmontools dnsutils nodejs npm 2>&1 | tail -3
 
     log "Zeitzone setzen: $TIMEZONE"
-    sudo timedatectl set-timezone "$TIMEZONE"
+    sudo timedatectl set-timezone "$TIMEZONE" 2>/dev/null || warn "Zeitzone konnte nicht gesetzt werden"
 
     log "Unattended-Upgrades konfigurieren..."
-    sudo dpkg-reconfigure --priority=low unattended-upgrades
+    sudo dpkg-reconfigure --priority=low unattended-upgrades 2>/dev/null || true
 
     # Fortschritt speichern VOR möglichem Neustart
     echo "STEP1=done" >> "$HOME_DIR/.bootstrap-progress" 2>/dev/null || true
@@ -154,8 +206,9 @@ section_3_ssh_harden() {
     mkdir -p ~/.ssh
     if [ ! -f ~/.ssh/config ] || ! grep -q "Host homelab" ~/.ssh/config 2>/dev/null; then
         cp config/ssh/client-config ~/.ssh/config
+        sed -i "s/192\.168\.178\.20/$SERVER_IP/g" ~/.ssh/config
         chmod 600 ~/.ssh/config
-        log "→ ~/.ssh/config eingerichtet (Host homelab)."
+        log "→ ~/.ssh/config eingerichtet (Host homelab → $SERVER_IP)."
     else
         log "SSH-Client-Konfiguration existiert bereits."
     fi
@@ -220,12 +273,24 @@ section_5_dns() {
     log "DNS-Container starten..."
     cd ~/docker/dns && docker compose up -d
 
+    log "Warte auf Pi-hole (max 30s)..."
+    local pihole_ready=0
+    for i in $(seq 1 30); do
+        if docker exec pihole pihole status 2>/dev/null | grep -qi "online\|running\|aktiv"; then
+            pihole_ready=1
+            break
+        fi
+        sleep 1
+    done
+    [ "$pihole_ready" -eq 1 ] && log "Pi-hole ist bereit" || warn "Pi-hole wurde nicht rechtzeitig fertig"
+
     log "Pi-hole Adlists konfigurieren..."
     docker exec pihole sh -c "echo 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' > /etc/pihole/adlists.list" 2>/dev/null || true
     docker exec pihole sh -c "echo 'https://big.oisd.nl/' >> /etc/pihole/adlists.list" 2>/dev/null || true
-    docker exec pihole pihole -g 2>/dev/null || warn "Gravity-Update fehlgeschlagen (Pi-hole lädt noch?)"
+    docker exec pihole pihole -g 2>/dev/null || warn "Gravity-Update fehlgeschlagen"
 
     log "DNSSEC-Test durchführen..."
+    sleep 2
     if dig sigfail.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "192.168.178.1"; then
         warn "DNSSEC sigfail erwartet: kein Ergebnis – alles gut (DNSSEC blockiert korrekt)"
     fi
@@ -528,6 +593,11 @@ EOSVC
 
 # ─── START ═══════════════════════════════════════════════════════════════════
 main() {
+    # Logging: alles in Datei mitschreiben
+    LOG_FILE="$HOME_DIR/bootstrap.log"
+    exec &> >(tee -a "$LOG_FILE")
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Atlas.Lab Homelab Bootstrap gestartet"
+
     # Marker-Datei für Fortschritt
     PROGRESS_FILE="$HOME_DIR/.bootstrap-progress"
 
@@ -558,6 +628,8 @@ main() {
     mkdir -p ~/scripts
     cp "$SCRIPT_DIR"/scripts/*.sh ~/scripts/ 2>/dev/null || true
     chmod +x ~/scripts/*.sh 2>/dev/null || true
+    # docker-compose-all.yml für merged Deployment bereitstellen
+    cp "$SCRIPT_DIR/docker-compose-all.yml" ~/docker/ 2>/dev/null || true
 
     [ -z "${STEP1:-}" ] && { section_1_system;   save_progress "STEP1"; }
     [ -z "${STEP2:-}" ] && { section_2_docker;   save_progress "STEP2"; }
@@ -579,6 +651,29 @@ main() {
     else
         warn "Bitte einmal aus- und wieder einloggen (oder 'newgrp docker' ausführen)."
     fi
+
+    # ─── Finale Überprüfung ──────────────────────────────────────────────
+    echo ""
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║  🔍  SERVICE-VERIFIKATION                        ║"
+    echo "╚══════════════════════════════════════════════════╝"
+    echo ""
+    log "Überprüfe laufende Docker-Container..."
+    local running=0 expected=0
+    for container in pihole unbound tor websurfx jellyfin ollama hermes open-webui \
+                     sabnzbd sonarr radarr prowlarr bazarr n8n syncthing \
+                     nextcloud-aio uptime-kuma heimdall caddy; do
+        expected=$((expected + 1))
+        if docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null | grep -q "running"; then
+            running=$((running + 1))
+        fi
+    done
+    log "$running von $expected erwarteten Containern laufen."
+    if [ "$running" -lt "$expected" ]; then
+        warn "Nicht alle Container laufen. Prüfe mit: ~/scripts/health-check.sh"
+    fi
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstrap abgeschlossen"
 
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
@@ -615,6 +710,10 @@ main() {
     echo "  AI Agent (Telegram):"
     echo "    nano ~/ai-agent/.env       – Token eintragen"
     echo "    sudo systemctl start ai-agent"
+    echo ""
+    echo "  Logs:"
+    echo "    ~/bootstrap.log            – Vollständiges Setup-Log"
+    echo "    ~/.bootstrap-progress      – Fortschritts-Marker"
     echo ""
     echo "───────────────────────────────────────────────────"
 }
