@@ -60,4 +60,8 @@ for svc in ssh ufw systemd-resolved; do
 done
 
 echo ""
+info "=== Docker Volumes ==="
+docker volume ls --format "table {{.Name}}\t{{.Driver}}" | head -20
+
+echo ""
 log "Health Check abgeschlossen."

@@ -3,6 +3,10 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "127.0.0.1:11434:11434"
     volumes:
@@ -17,6 +21,11 @@ services:
       resources:
         limits:
           memory: 14g
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - homelab
 

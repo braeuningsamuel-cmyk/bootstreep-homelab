@@ -3,6 +3,10 @@ services:
     image: node:20-alpine
     container_name: hermes
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "3000:3000"
     working_dir: /app
@@ -18,6 +22,11 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - homelab
 

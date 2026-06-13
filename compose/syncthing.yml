@@ -3,6 +3,10 @@ services:
     image: syncthing/syncthing:latest
     container_name: syncthing
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "8384:8384"
       - "22000:22000"
@@ -12,6 +16,17 @@ services:
       - ~/vault:/var/syncthing/vault
     environment:
       - STGUIADDRESS=0.0.0.0:8384
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8384/rest/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - homelab
 
