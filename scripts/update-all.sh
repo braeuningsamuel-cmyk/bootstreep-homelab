@@ -24,11 +24,16 @@ for d in */; do
 done
 
 info "=== KI-Modelle aktualisieren ==="
-docker exec ollama ollama pull mistral:7b 2>/dev/null || warn "Ollama nicht erreichbar"
-docker exec ollama ollama pull llama3.2:3b 2>/dev/null || true
-docker exec ollama ollama pull deepseek-coder:6.7b 2>/dev/null || true
-docker exec ollama ollama pull llama3.2:8b 2>/dev/null || true
-docker exec ollama ollama pull phi4:14b 2>/dev/null || true
+MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
+for model in $MODELS; do
+    if docker exec ollama ollama list 2>/dev/null | grep -q "^${model%%:*}"; then
+        log "→ $model vorhanden – Pulling Update..."
+        docker exec ollama ollama pull "$model" 2>/dev/null || warn "$model Update fehlgeschlagen"
+    else
+        log "→ $model nicht vorhanden – Pulling..."
+        docker exec ollama ollama pull "$model" 2>/dev/null || warn "$model Pull fehlgeschlagen"
+    fi
+done
 
 info "=== Pi-hole aktualisieren ==="
 docker exec pihole pihole -up 2>/dev/null || warn "Pi-hole nicht erreichbar"

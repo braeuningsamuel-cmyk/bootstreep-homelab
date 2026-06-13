@@ -456,8 +456,17 @@ section_7_ai() {
     log "KI-Modelle herunterladen (ca. 15–25 Min)..."
     MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
     for model in $MODELS; do
+        # Prüfe ob Modell bereits vorhanden
+        if docker exec ollama ollama list 2>/dev/null | grep -q "^${model%%:*}"; then
+            log "→ $model bereits vorhanden – überspringe."
+            continue
+        fi
         log "→ Pulling $model ..."
-        docker exec ollama ollama pull "$model" 2>/dev/null || log "⚠️  $model pull fehlgeschlagen (wird später erneut versucht)"
+        if docker exec ollama ollama pull "$model" 2>/dev/null; then
+            log "✓ $model fertig."
+        else
+            warn "⚠️  $model pull fehlgeschlagen (wird später erneut versucht)"
+        fi
     done
 
     log "Hermes KI-Chat-Oberfläche per Docker starten..."
@@ -498,8 +507,9 @@ section_8_media() {
     log "Arr-Stack starten (Sonarr, Radarr, Prowlarr, Bazarr)..."
     for service in sonarr radarr prowlarr bazarr; do
         cp "compose/$service.yml" ~/docker/"$service"/compose.yml
-        dc_up "$service" "$service"
     done
+    # Paralleler Start der Arr-Services (unabhängig voneinander)
+    dc_up_parallel "sonarr:Sonarr" "radarr:Radarr" "prowlarr:Prowlarr" "bazarr:Bazarr"
 
     log "n8n Workflow-Automation starten..."
     cp compose/n8n.yml ~/docker/n8n/compose.yml
@@ -772,7 +782,7 @@ main() {
 
     echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║     BOOTSTREEP HOMELAB BOOTSTRAP v3.6.0            ║"
+echo "║     BOOTSTREEP HOMELAB BOOTSTRAP v3.7.0            ║"
 echo "╚══════════════════════════════════════════════════╝"
     echo ""
 

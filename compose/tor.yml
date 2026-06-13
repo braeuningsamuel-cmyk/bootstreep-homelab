@@ -5,6 +5,12 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:9050:9150"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9150"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - homelab
 

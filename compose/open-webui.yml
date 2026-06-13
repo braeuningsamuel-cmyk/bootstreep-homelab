@@ -7,8 +7,15 @@ services:
       - "3002:8080"
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     volumes:
       - open_webui_data:/app/backend/data
     networks:

@@ -8,6 +8,12 @@ services:
       - "127.0.0.1:5335:53/tcp"
     volumes:
       - ./unbound.conf:/opt/unbound/unbound.conf:ro
+    healthcheck:
+      test: ["CMD", "dig", "+short", "google.com", "@127.0.0.1", "-p", "53"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - homelab
 
@@ -28,7 +34,8 @@ services:
       - pihole_etc:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
     depends_on:
-      - unbound
+      unbound:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "sh", "-c", "dig +short google.com @127.0.0.1 || exit 1"]
       interval: 30s

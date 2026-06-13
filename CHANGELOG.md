@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.7.0 (2026-06-13) – Healthchecks & Deployment Optimierung
+
+### Compose
+- **Healthchecks** für alle 21 Services: Pi-hole, Unbound, Tor, Websurfx, Ollama, Hermes, Open WebUI, Jellyfin, SABnzbd, Sonarr, Radarr, Prowlarr, Bazarr, Nextcloud, Syncthing, Uptime Kuma, Heimdall, TeamSpeak3, AMP, Caddy, n8n
+- **Abhängigkeiten** mit `condition: service_healthy`: Open WebUI → Ollama, Hermes → Ollama, Websurfx → Tor
+- Startreihenfolge garantiert durch Health-Checks statt bloßer `depends_on`
+
+### Bootstrap
+- **Modell-Pull**: Überspringt bereits heruntergeladene Ollama-Modelle (kein erneutes Pull)
+- **Arr-Stack**: Paralleler Start von Sonarr, Radarr, Prowlarr, Bazarr
+- Fortschrittsmeldungen für jedes Modell-Update
+
 ## v3.6.0 (2026-06-13) – Security & Performance Hardening
 
 ### Security

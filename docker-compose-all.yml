@@ -71,6 +71,12 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - N8N_HOST=localhost
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     deploy:
       resources:
         limits:
@@ -92,8 +98,15 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - open_webui_data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
 
   hermes:
     <<: *common
@@ -105,8 +118,15 @@ services:
     volumes:
       - ~/hermes:/app
     command: sh -c "npm install && npm run build && npm start"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
 
   # ─── PRIVATSPHÄRE ────────────────────────────────────────
   tor:
@@ -115,6 +135,12 @@ services:
     container_name: tor
     ports:
       - "127.0.0.1:9050:9150"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9150"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   websurfx:
     <<: *common
@@ -122,8 +148,15 @@ services:
     container_name: websurfx
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     depends_on:
-      - tor
+      tor:
+        condition: service_healthy
 
   # ─── KI ──────────────────────────────────────────────────
   ollama:
@@ -166,6 +199,12 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ─── MEDIEN ──────────────────────────────────────────────
   jellyfin:
@@ -179,6 +218,12 @@ services:
       - ~/media:/media:ro
     devices:
       - "/dev/dri:/dev/dri"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -204,6 +249,12 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/api/v3/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   radarr:
     <<: *common
@@ -219,6 +270,12 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7878/api/v3/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   prowlarr:
     <<: *common
@@ -232,6 +289,12 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9696/api/v1/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   bazarr:
     <<: *common
@@ -247,6 +310,12 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6767"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ─── CLOUD & SYNC ────────────────────────────────────────
   nextcloud-aio:
@@ -259,6 +328,12 @@ services:
     volumes:
       - /opt/nextcloud-data:/var/lib/docker/volumes/nextcloud-aio
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
 
   syncthing:
     <<: *common
@@ -273,6 +348,12 @@ services:
       - ~/vault:/var/syncthing/vault
     environment:
       - STGUIADDRESS=0.0.0.0:8384
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8384/rest/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ─── MONITORING ──────────────────────────────────────────
   uptime-kuma:
@@ -283,6 +364,12 @@ services:
       - "3001:3001"
     volumes:
       - uptime_kuma_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ─── DASHBOARD ────────────────────────────────────────────
   heimdall:
@@ -298,6 +385,12 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ─── GAMESERVER ───────────────────────────────────────────
   teamspeak:
@@ -312,6 +405,12 @@ services:
       - teamspeak_data:/var/ts3server
     environment:
       - TS3SERVER_LICENSE=accept
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "10011"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   amp:
     <<: *common
@@ -326,6 +425,12 @@ services:
     environment:
       - AMP_UID=1000
       - AMP_GID=1000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ─── REVERSE PROXY ───────────────────────────────────────
   caddy:

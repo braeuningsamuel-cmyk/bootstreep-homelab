@@ -9,8 +9,15 @@ services:
     volumes:
       - ~/hermes:/app
     command: sh -c "npm install && npm run build && npm start"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     networks:
       - homelab
 
