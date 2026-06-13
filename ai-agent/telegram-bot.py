@@ -35,7 +35,7 @@ load_dotenv(Path.home() / 'ai-agent' / '.env')
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 ALLOWED_IDS = os.getenv('ALLOWED_CHAT_IDS', '')
 ALLOWED_CHAT_IDS = [int(x.strip()) for x in ALLOWED_IDS.split(',') if x.strip()] if ALLOWED_IDS else []
-SERVER_NAME = os.getenv('SERVER_NAME', 'AtlasLab')
+SERVER_NAME = os.getenv('SERVER_NAME', 'Bootstreep')
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral:7b')
 
