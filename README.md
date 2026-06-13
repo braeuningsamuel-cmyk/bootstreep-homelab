@@ -1,6 +1,6 @@
 # Atlas.Lab Homelab Bootstrap 🚀
 
-**Ein Befehl – fertiges Homelab mit 18+ Diensten + KI-Assistent**
+**Ein Befehl – fertiges Homelab mit 21+ Diensten + KI-Assistent**
 
 ```
 chmod +x bootstrap.sh && ./bootstrap.sh
@@ -16,12 +16,14 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 |---|---|
 | **DNS** | Pi-hole (Werbeblocker) + Unbound (Resolver) |
 | **Privatsphäre** | Tor SOCKS5-Proxy + Websurfx (Metasuchmaschine) |
-| **KI / Lokale LLMs** | Ollama (Mistral, Llama, DeepSeek) + Hermes Chat-UI |
-| **Medien** | Jellyfin + Sonarr + Radarr + Prowlarr + Bazarr |
+| **KI / Lokale LLMs** | Ollama (Mistral, Llama, DeepSeek, Phi) + Hermes + Open WebUI |
+| **Workflow Automation** | n8n (Make/Zapier-Alternative) |
+| **Medien** | Jellyfin + SABnzbd + Sonarr + Radarr + Prowlarr + Bazarr |
 | **Cloud & Sync** | Nextcloud AIO + Syncthing |
+| **Dashboard** | Heimdall (Startseite für alle Dienste) |
 | **Monitoring** | Uptime Kuma |
 | **Reverse Proxy** | Caddy (Auto-HTTPS) |
-| **VPN** | WireGuard via PiVPN |
+| **VPN** | WireGuard via PiVPN oder Tailscale |
 | **Netzwerkfreigabe** | Samba |
 | **Game-Server** | AMP (Minecraft, Valheim uvm.) |
 | **📱 KI-Agent** | Telegram Bot mit Server-Steuerung, Daily Briefing, E-Mail, Kalender |
@@ -47,13 +49,13 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
                     │  │  Docker Netzwerk        │  │
                     │  │  "homelab"              │  │
                     │  │                         │  │
-                    │  │  Pi-hole  ←  Unbound    │  │
-                    │  │  ↓                      │  │
-                    │  │  Tor → Websurfx         │  │
-                    │  │  Ollama + Hermes        │  │
-                    │  │  Jellyfin + Arr-Stack   │  │
-                    │  │  Nextcloud + Syncthing  │  │
-                    │  │  Uptime Kuma            │  │
+│  │  Pi-hole  ←  Unbound    │  │
+│  │  Tor → Websurfx         │  │
+│  │  Ollama + Open WebUI    │  │
+│  │  Hermes + n8n           │  │
+│  │  Jellyfin + Arr-Stack   │  │
+│  │  Nextcloud + Syncthing  │  │
+│  │  Heimdall + Uptime Kuma │  │
                     │  └─────────────────────────┘  │
                     │                              │
                     │  ┌──────────────────────┐    │
@@ -80,11 +82,15 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | Prowlarr | `9696` | Docker |
 | Bazarr | `6767` | Docker |
 | Hermes | `3000` | Node |
+| Open WebUI | `3002` | Docker |
+| n8n | `5678` | Docker |
 | Ollama API | `11434` (127.0.0.1) | Docker |
 | AMP | `8087` | Systemd |
 | Uptime Kuma | `3001` | Docker |
 | Syncthing | `8384` / `22000` / `21027/udp` | Docker |
 | WireGuard | `51820/udp` | PiVPN |
+| SABnzbd | `8085` | Docker |
+| Heimdall | `8090` / `8091` | Docker |
 | Samba | `445` | System |
 
 ## Schnellstart
@@ -179,29 +185,44 @@ Dieses Bootstrap-Setup ist designed, um mit AI-Agent-Plattformen wie **GenSpark 
 ```
 atlaslab-homelab-bootstrap/
 ├── bootstrap.sh              # Master-Setup-Script
+├── bootstrap.sh              # Master-Setup-Script
+├── docker-compose-all.yml    # Alle Dienste in einer Datei
 ├── compose/                  # Docker Compose Definitionen
 │   ├── dns.yml               # Pi-hole + Unbound
 │   ├── tor.yml               # Tor SOCKS5-Proxy
 │   ├── websurfx.yml          # Metasuchmaschine
 │   ├── ollama.yml            # Lokale LLM-Engine
+│   ├── open-webui.yml        # KI-Chat-Oberfläche (Port 3002)
+│   ├── hermes.yml            # KI-Chat (Port 3000, Docker)
+│   ├── n8n.yml               # Workflow-Automation (Port 5678)
 │   ├── jellyfin.yml          # Mediathek
 │   ├── sonarr.yml            # Serien-Automatisierung
 │   ├── radarr.yml            # Film-Automatisierung
 │   ├── prowlarr.yml          # Indexer-Manager
 │   ├── bazarr.yml            # Untertitel
+│   ├── sabnzbd.yml           # Download-Client
 │   ├── syncthing.yml         # Datei-Sync
 │   ├── nextcloud.yml         # Cloud
 │   ├── uptime-kuma.yml       # Monitoring
+│   ├── heimdall.yml          # Dashboard
 │   └── caddy.yml             # Reverse Proxy
+├── cloud-init/               # Automatische Provisionierung
+│   └── user-data.example
 ├── config/                   # Konfigurationsdateien
 │   ├── dns/unbound.conf
 │   ├── websurfx/config.lua
 │   ├── caddy/Caddyfile
 │   └── ssh/client-config
+├── docs/                     # Dokumentation
+│   ├── architecture.md
+│   ├── bootstrap-flow.md
+│   └── cloud-init-flow.md
 ├── scripts/                  # Utility-Scripts
 │   ├── update-all.sh         # Update-All
 │   ├── backup-all.sh         # Backup-All
 │   ├── health-check.sh       # Status-Prüfung
+│   ├── dnssec-test.sh        # DNSSEC-Validierung
+│   ├── setup-cron.sh         # Cron-Jobs einrichten
 │   ├── restart-service.sh    # Einzeldienst neustarten
 │   └── logs.sh               # Logs anzeigen
 ├── ai-agent/                 # KI-Assistent
@@ -253,6 +274,9 @@ htop
 | Unattended-Upgrades | ✅ Aktiviert |
 | DNSSEC | ✅ Aktiviert (Pi-hole) |
 | WireGuard VPN | Optional (PiVPN) |
+| Tailscale VPN | Optional (Zero-Config) |
+| Cron-Jobs (Update/Backup) | ✅ Automatisch |
+| Samba-Passwortschutz | ✅ Aktiviert |
 
 ## Hardware-Empfehlung
 

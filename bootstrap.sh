@@ -49,7 +49,7 @@ echo ""
 section_1_system() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  1/12  SYSTEM-GRUNDLAGEN                         ║"
+    echo "║  1.  SYSTEM-GRUNDLAGEN                            ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Paketquellen aktualisieren..."
@@ -58,7 +58,7 @@ section_1_system() {
     log "Wichtige Pakete installieren..."
     sudo apt install -y curl git wget htop nano ufw fail2ban \
         unattended-upgrades ca-certificates gnupg lsb-release \
-        net-tools iperf3 smartmontools
+        net-tools iperf3 smartmontools dnsutils nodejs npm
 
     log "Zeitzone setzen: $TIMEZONE"
     sudo timedatectl set-timezone "$TIMEZONE"
@@ -66,16 +66,25 @@ section_1_system() {
     log "Unattended-Upgrades konfigurieren..."
     sudo dpkg-reconfigure --priority=low unattended-upgrades
 
+    # Fortschritt speichern VOR möglichem Neustart
+    echo "STEP1=done" >> "$HOME_DIR/.bootstrap-progress" 2>/dev/null || true
+
     echo ""
     warn "System-Upgrade abgeschlossen. Ein Neustart wird empfohlen."
     warn "→ Nach dem Neustart bootstrap.sh erneut starten (erkennt bereits erledigte Schritte)."
+    echo ""
+    read -rp "Jetzt neu starten? (y/N): " reboot_now
+    if [ "$reboot_now" = "y" ] || [ "$reboot_now" = "Y" ]; then
+        log "Neustart wird durchgeführt..."
+        sudo reboot
+    fi
 }
 
 # ─── 2. DOCKER-INSTALLATION ───────────────────────────────────────────────────
 section_2_docker() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  2/12  DOCKER-INSTALLATION                       ║"
+    echo "║  2.  DOCKER-INSTALLATION                          ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     if command -v docker &>/dev/null; then
@@ -90,10 +99,8 @@ section_2_docker() {
     else
         sudo usermod -aG docker "$USER"
         warn "Benutzer $USER wurde zur docker-Gruppe hinzugefügt."
-        warn "→ Für die nächste Sitzung neu anmelden (newgrp docker) oder Script neu starten."
+        warn "→ Für Docker-Zugriff: 'newgrp docker' in neuer Shell oder aus-/einloggen."
     fi
-
-    newgrp docker || true
 
     log "Docker Compose Version:"
     docker compose version
@@ -107,8 +114,8 @@ section_2_docker() {
 
     log "Docker-Verzeichnisstruktur anlegen..."
     mkdir -p ~/docker
-    for dir in dns tor websurfx ollama jellyfin sonarr radarr prowlarr bazarr \
-               syncthing nextcloud uptime-kuma caddy hermes; do
+    for dir in dns tor websurfx ollama open-webui jellyfin sabnzbd n8n sonarr radarr prowlarr bazarr \
+               syncthing nextcloud uptime-kuma caddy hermes heimdall; do
         mkdir -p ~/docker/"$dir"
     done
 }
@@ -117,7 +124,7 @@ section_2_docker() {
 section_3_ssh_harden() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  3/12  SSH-HÄRTUNG                               ║"
+    echo "║  3.  SSH-HÄRTUNG                                  ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     SSH_CFG="/etc/ssh/sshd_config"
@@ -143,6 +150,16 @@ section_3_ssh_harden() {
     sudo systemctl restart ssh
     log "SSH-Dienst neugestartet."
 
+    log "SSH-Client-Konfiguration bereitstellen..."
+    mkdir -p ~/.ssh
+    if [ ! -f ~/.ssh/config ] || ! grep -q "Host homelab" ~/.ssh/config 2>/dev/null; then
+        cp config/ssh/client-config ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        log "→ ~/.ssh/config eingerichtet (Host homelab)."
+    else
+        log "SSH-Client-Konfiguration existiert bereits."
+    fi
+
     warn "WICHTIG: Stelle sicher, dass du deinen SSH-Key hinterlegt hast:"
     warn "  ssh-copy-id -i ~/.ssh/id_ed25519.pub $USER@$SERVER_IP"
     warn "→ Erst NACH dem Testen in einer NEUEN Session die SSH-Verbindung schließen!"
@@ -152,7 +169,7 @@ section_3_ssh_harden() {
 section_4_firewall() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  4/12  FIREWALL (UFW)                            ║"
+    echo "║  4.  FIREWALL (UFW)                               ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     if sudo ufw status | grep -q "active"; then
@@ -168,6 +185,9 @@ section_4_firewall() {
     # LAN-Zugriff auf Web-Interfaces
     sudo ufw allow from 192.168.0.0/16 to any port 8081,8082,8096,3000,3001,8087,8384,8989,7878,9696,6767
 
+    # Samba-Netzwerkfreigabe
+    sudo ufw allow 445/tcp
+
     # WireGuard VPN
     sudo ufw allow 51820/udp
 
@@ -180,13 +200,16 @@ section_4_firewall() {
 section_5_dns() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  5/12  DNS (Pi-hole + Unbound)                   ║"
+    echo "║  5.  DNS (Pi-hole + Unbound)                      ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Systemd-resolved deaktivieren (Port 53 freigeben)..."
     sudo sed -i 's/#DNSStubListener=yes/DNSStubListener=no/' /etc/systemd/resolved.conf
     sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     sudo systemctl restart systemd-resolved
+
+    log "DNS-Verzeichnisse anlegen..."
+    mkdir -p ~/docker/dns/etc-pihole ~/docker/dns/etc-dnsmasq.d
 
     log "Unbound-Konfiguration bereitstellen..."
     cp config/dns/unbound.conf ~/docker/dns/unbound.conf
@@ -196,13 +219,28 @@ section_5_dns() {
 
     log "DNS-Container starten..."
     cd ~/docker/dns && docker compose up -d
+
+    log "Pi-hole Adlists konfigurieren..."
+    docker exec pihole sh -c "echo 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' > /etc/pihole/adlists.list" 2>/dev/null || true
+    docker exec pihole sh -c "echo 'https://big.oisd.nl/' >> /etc/pihole/adlists.list" 2>/dev/null || true
+    docker exec pihole pihole -g 2>/dev/null || warn "Gravity-Update fehlgeschlagen (Pi-hole lädt noch?)"
+
+    log "DNSSEC-Test durchführen..."
+    if dig sigfail.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "192.168.178.1"; then
+        warn "DNSSEC sigfail erwartet: kein Ergebnis – alles gut (DNSSEC blockiert korrekt)"
+    fi
+    if dig sigok.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "134.91.78.139"; then
+        log "DNSSEC-Validierung funktioniert (sigok aufgelöst)"
+    else
+        warn "DNSSEC-Test sigok fehlgeschlagen – ggf. Propagation abwarten"
+    fi
 }
 
 # ─── 6. TOR + WEBSURFX (PRIVATSPHÄRE) ────────────────────────────────────────
 section_6_privacy() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  6/12  TOR + WEBSURFX (PRIVATSPHÄRE)             ║"
+    echo "║  6.  TOR + WEBSURFX (PRIVATSPHÄRE)                ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Tor-SOCKS5-Proxy starten..."
@@ -229,52 +267,71 @@ section_6_privacy() {
 section_7_ai() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  7/12  OLLAMA + HERMES (LOKALE KI)               ║"
+    echo "║  7.  OLLAMA + HERMES (LOKALE KI)                  ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Ollama starten..."
     cp compose/ollama.yml ~/docker/ollama/compose.yml
     cd ~/docker/ollama && docker compose up -d
 
-    log "KI-Modelle herunterladen (ca. 10–20 Min)..."
+    log "KI-Modelle herunterladen (ca. 15–25 Min)..."
     docker exec ollama ollama pull mistral:7b 2>/dev/null || true
     docker exec ollama ollama pull llama3.2:3b 2>/dev/null || true
     docker exec ollama ollama pull deepseek-coder:6.7b 2>/dev/null || true
+    docker exec ollama ollama pull llama3.2:8b 2>/dev/null || true
+    docker exec ollama ollama pull phi4:14b 2>/dev/null || true
 
-    log "Hermes KI-Chat-Oberfläche installieren..."
+    log "Hermes KI-Chat-Oberfläche per Docker starten..."
     if [ ! -d ~/hermes ]; then
         git clone https://github.com/Hermes-Project/hermes.git ~/hermes
         cp ~/hermes/.env.example ~/hermes/.env
         log "→ .env-Datei in ~/hermes/.env – ggf. API-Keys eintragen."
     fi
+    cp compose/hermes.yml ~/docker/hermes/compose.yml
+    cd ~/docker/hermes && docker compose up -d
+    log "→ Hermes läuft auf http://$SERVER_IP:3000"
+
+    log "Open WebUI (alternative Chat-Oberfläche) starten..."
+    cp compose/open-webui.yml ~/docker/open-webui/compose.yml
+    cd ~/docker/open-webui && docker compose up -d
+    log "→ Open WebUI läuft auf http://$SERVER_IP:3002"
 }
 
 # ─── 8. JELLYFIN + ARR-STACK (MEDIEN) ────────────────────────────────────────
 section_8_media() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  8/12  JELLYFIN + ARR-STACK (MEDIATHEK)          ║"
+    echo "║  8.  JELLYFIN + ARR-STACK (MEDIATHEK)             ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Medienverzeichnisse anlegen..."
     mkdir -p ~/media/{movies,series,music,photos,books}
+    mkdir -p ~/downloads/{complete,incomplete}
 
     log "Jellyfin starten..."
     cp compose/jellyfin.yml ~/docker/jellyfin/compose.yml
     cd ~/docker/jellyfin && docker compose up -d
+
+    log "Download-Client (SABnzbd) starten..."
+    cp compose/sabnzbd.yml ~/docker/sabnzbd/compose.yml
+    cd ~/docker/sabnzbd && docker compose up -d
 
     log "Arr-Stack starten (Sonarr, Radarr, Prowlarr, Bazarr)..."
     for service in sonarr radarr prowlarr bazarr; do
         cp "compose/$service.yml" ~/docker/"$service"/compose.yml
         cd ~/docker/"$service" && docker compose up -d
     done
+
+    log "n8n Workflow-Automation starten..."
+    cp compose/n8n.yml ~/docker/n8n/compose.yml
+    cd ~/docker/n8n && docker compose up -d
 }
 
 # ─── 9. NEXTCLOUD + SYNCTHING (CLOUD + SYNC) ────────────────────────────────
 section_9_cloud() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  9/12  NEXTCLOUD + SYNCTHING (CLOUD & SYNC)      ║"
+    echo "║  9.  NEXTCLOUD + SYNCTHING (CLOUD & SYNC)         ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "Nextcloud AIO starten..."
@@ -296,7 +353,7 @@ section_9_cloud() {
 section_10_access() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 10/12  SAMBA + GAMES + VPN (ZUGRIFF)             ║"
+    echo "║ 10.  SAMBA + GAMES + VPN (ZUGRIFF)                ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     # SAMBA
@@ -329,6 +386,20 @@ EOSMB
     cp compose/uptime-kuma.yml ~/docker/uptime-kuma/compose.yml
     cd ~/docker/uptime-kuma && docker compose up -d
 
+    # Heimdall Dashboard
+    log "Heimdall Dashboard starten..."
+    cp compose/heimdall.yml ~/docker/heimdall/compose.yml
+    cd ~/docker/heimdall && docker compose up -d
+
+    # Cron-Jobs für automatisierte Wartung
+    log "Cron-Jobs einrichten..."
+    (crontab -l 2>/dev/null | grep -q "update-all.sh") && log "Cron-Jobs bereits vorhanden." || {
+        (crontab -l 2>/dev/null; echo "0 3 * * 0 $HOME_DIR/scripts/update-all.sh >/dev/null 2>&1") | crontab -
+        (crontab -l 2>/dev/null; echo "0 4 * * 0 $HOME_DIR/scripts/backup-all.sh >/dev/null 2>&1") | crontab -
+        (crontab -l 2>/dev/null; echo "*/30 * * * * $HOME_DIR/scripts/health-check.sh >/dev/null 2>&1") | crontab -
+        log "→ Wöchentliches Update (So 3 Uhr), Backup (So 4 Uhr), Health-Check (alle 30 Min)"
+    }
+
     # Caddy Reverse Proxy
     log "Caddy Reverse-Proxy starten..."
     cp compose/caddy.yml ~/docker/caddy/compose.yml
@@ -349,7 +420,7 @@ EOSMB
 section_11_wireguard() {
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 11/12  WIREGUARD VPN (PIVPN)                     ║"
+    echo "║ 11.  WIREGUARD VPN (PIVPN)                        ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     if command -v pivpn &>/dev/null; then
@@ -361,6 +432,35 @@ section_11_wireguard() {
     warn "  curl -L https://install.pivpn.io | bash"
     warn "  → WireGuard auswählen, DNS: $SERVER_IP, Port: 51820 UDP"
     warn "  → Nach Installation: pivpn add && pivpn -qr"
+    echo ""
+    warn "Alternativ: Tailscale (einfacher, kein Port-Forwarding nötig):"
+    warn "  curl -fsSL https://tailscale.com/install.sh | sh"
+    warn "  sudo tailscale up"
+    warn "  → Verbindung zu deinem Tailscale-Netzwerk (tailscale.com)"
+}
+
+# ─── 13. GPU/NVIDIA (OPTIONAL) ──────────────────────────────────────────────
+section_13_gpu() {
+    echo ""
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║    OPTIONAL: GPU/NVIDIA-TREIBER                   ║"
+    echo "╚══════════════════════════════════════════════════╝"
+
+    warn "NVIDIA-GPU-Treiber werden NICHT automatisch installiert."
+    warn "Falls du eine NVIDIA-GPU für Ollama/Jellyfin nutzen willst:"
+    echo ""
+    warn "  sudo apt install -y nvidia-driver-535 nvidia-container-toolkit"
+    warn "  sudo reboot"
+    warn ""
+    warn "Nach Installation: docker compose -f ~/docker/ollama/compose.yml up -d"
+    echo ""
+    read -rp "Jetzt NVIDIA-Treiber installieren? (y/N): " install_nvidia
+    if [ "$install_nvidia" = "y" ] || [ "$install_nvidia" = "Y" ]; then
+        sudo apt install -y nvidia-driver-535 nvidia-container-toolkit
+        log "NVIDIA-Treiber installiert. Neustart erforderlich."
+        read -rp "Jetzt neu starten? (y/N): " reboot_nvidia
+        [ "$reboot_nvidia" = "y" ] || [ "$reboot_nvidia" = "Y" ] && sudo reboot
+    fi
 }
 
 # ─── 12. AI AGENT (TELEGRAM BOT + ASSISTANT) ─────────────────────────────────
@@ -372,7 +472,7 @@ section_12_ai_agent() {
 
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 12/12  AI AGENT (TELEGRAM BOT + ASSISTANT)       ║"
+    echo "║ 12.  AI AGENT (TELEGRAM BOT + ASSISTANT)          ║"
     echo "╚══════════════════════════════════════════════════╝"
 
     log "AI-Agent-Setup starten..."
@@ -399,8 +499,8 @@ section_12_ai_agent() {
 
     # Bot-Service installieren
     cp ai-agent/telegram-bot.py ~/ai-agent/bot.py
-    cp ai-agent/daily-briefing.py ~/ai-agent/daily.py
-    cp ai-agent/server-commands.py ~/ai-agent/commands.py
+    cp ai-agent/daily_briefing.py ~/ai-agent/daily.py
+    cp ai-agent/server_commands.py ~/ai-agent/commands.py
 
     log "Bot als Systemd-Service registrieren..."
     sudo tee /etc/systemd/system/ai-agent.service >/dev/null <<EOSVC
@@ -452,8 +552,12 @@ main() {
 
     # COMPOSE- und CONFIG-Dateien ins Home kopieren
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    cp -r "$SCRIPT_DIR/compose"/*.yml ~/docker/ 2>/dev/null || true
+    # Config-Dateien zentral bereitstellen
     cp -r "$SCRIPT_DIR/config" ~/ 2>/dev/null || true
+    # Utility-Scripts kopieren
+    mkdir -p ~/scripts
+    cp "$SCRIPT_DIR"/scripts/*.sh ~/scripts/ 2>/dev/null || true
+    chmod +x ~/scripts/*.sh 2>/dev/null || true
 
     [ -z "${STEP1:-}" ] && { section_1_system;   save_progress "STEP1"; }
     [ -z "${STEP2:-}" ] && { section_2_docker;   save_progress "STEP2"; }
@@ -467,6 +571,7 @@ main() {
     [ -z "${STEP10:-}" ] && { section_10_access; save_progress "STEP10"; }
     [ -z "${STEP11:-}" ] && { section_11_wireguard; save_progress "STEP11"; }
     [ -z "${STEP12:-}" ] && { section_12_ai_agent;  save_progress "STEP12"; }
+    [ -z "${STEP13:-}" ] && { section_13_gpu;      save_progress "STEP13"; }
 
     # Falls der Benutzer neu zur docker-Gruppe hinzugefügt wurde
     if groups "$USER" | grep -q docker; then
@@ -486,6 +591,10 @@ main() {
     echo "    Nextcloud   → http://$SERVER_IP:8082"
     echo "    Jellyfin    → http://$SERVER_IP:8096"
     echo "    Hermes      → http://$SERVER_IP:3000"
+    echo "    Open WebUI  → http://$SERVER_IP:3002"
+    echo "    n8n         → http://$SERVER_IP:5678"
+    echo "    SABnzbd     → http://$SERVER_IP:8085"
+    echo "    Heimdall    → http://$SERVER_IP:8090"
     echo "    Uptime Kuma → http://$SERVER_IP:3001"
     echo "    Sonarr      → http://$SERVER_IP:8989"
     echo "    Radarr      → http://$SERVER_IP:7878"
@@ -501,6 +610,7 @@ main() {
     echo "    ~/scripts/update-all.sh    – Alle Container + System updaten"
     echo "    ~/scripts/backup-all.sh    – Backup erstellen"
     echo "    ~/scripts/health-check.sh  – Status prüfen"
+    echo "    ~/scripts/dnssec-test.sh   – DNSSEC-Validierung testen"
     echo ""
     echo "  AI Agent (Telegram):"
     echo "    nano ~/ai-agent/.env       – Token eintragen"

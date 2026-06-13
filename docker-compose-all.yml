@@ -45,6 +45,32 @@ services:
     depends_on:
       - unbound
 
+  # ─── KI-WORKFLOWS ────────────────────────────────────────
+  n8n:
+    <<: *common
+    image: n8nio/n8n
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+
+  # ─── KI-CHAT-UI ──────────────────────────────────────────
+  open-webui:
+    <<: *common
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3002:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - open_webui_data:/app/backend/data
+
   # ─── PRIVATSPHÄRE ────────────────────────────────────────
   tor:
     <<: *common
@@ -75,6 +101,22 @@ services:
       resources:
         limits:
           memory: 14g
+
+  # ─── DOWNLOAD-CLIENT ─────────────────────────────────────
+  sabnzbd:
+    <<: *common
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    ports:
+      - "8085:8080"
+    volumes:
+      - sabnzbd_config:/config
+      - ~/downloads:/downloads
+      - ~/media:/media
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
 
   # ─── MEDIEN ──────────────────────────────────────────────
   jellyfin:
@@ -216,10 +258,13 @@ volumes:
   pihole_dnsmasq:
   ollama_data:
   jellyfin_config:
+  sabnzbd_config:
   sonarr_config:
   radarr_config:
   prowlarr_config:
   bazarr_config:
+  n8n_data:
+  open_webui_data:
   syncthing_data:
   uptime_kuma_data:
   heimdall_config:

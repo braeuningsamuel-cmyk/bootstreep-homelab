@@ -69,7 +69,7 @@ async def get_stocks() -> str:
                 async with session.get(url, timeout=10) as resp:
                     data = await resp.json()
                     price = data['chart']['result'][0]['meta']['regularMarketPrice']
-                    prev = data['chart']['result'][0]['chartPreviousClose']
+                    prev = data['chart']['result'][0]['meta']['previousClose']
                     change = ((price - prev) / prev) * 100
                     sign = '+' if change >= 0 else ''
                     lines.append(f'  {ticker}: ${price:.2f} ({sign}{change:.1f}%)')

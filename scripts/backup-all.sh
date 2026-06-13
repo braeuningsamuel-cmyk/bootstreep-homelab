@@ -14,10 +14,15 @@ BACKUP=~/backups/$(date +%Y%m%d-%H%M)
 mkdir -p "$BACKUP"
 
 log "Ollama-Daten sichern..."
-docker run --rm -v ollama_ollama_data:/data -v "$BACKUP":/backup alpine tar czf /backup/ollama.tar.gz -C /data . 2>/dev/null || warn "Ollama-Volume nicht gefunden"
+# Ermittle tatsächlichen Volume-Namen (abhängig vom Deployment: compose vs docker-compose-all)
+OLLAMA_VOLUME=$(docker volume ls -q | grep -E 'ollama(_ollama)?_data' | head -1) && \
+  docker run --rm -v "$OLLAMA_VOLUME":/data -v "$BACKUP":/backup alpine tar czf /backup/ollama.tar.gz -C /data . 2>/dev/null || \
+  warn "Ollama-Volume nicht gefunden"
 
 log "Pi-hole-Daten sichern..."
-docker run --rm -v dns_etc-pihole:/data -v "$BACKUP":/backup alpine tar czf /backup/pihole.tar.gz -C /data . 2>/dev/null || warn "Pi-hole-Volume nicht gefunden"
+PIHOLE_VOLUME=$(docker volume ls -q | grep -E '(dns_)?(pihole_)?etc-pihole' | head -1) && \
+  docker run --rm -v "$PIHOLE_VOLUME":/data -v "$BACKUP":/backup alpine tar czf /backup/pihole.tar.gz -C /data . 2>/dev/null || \
+  warn "Pi-hole-Volume nicht gefunden (ggf. kein named volume)"
 
 log "Pi-hole Teleporter-Export..."
 docker exec pihole pihole -a -t "$BACKUP/teleporter.tar.gz" 2>/dev/null || warn "Pi-hole Teleporter fehlgeschlagen"

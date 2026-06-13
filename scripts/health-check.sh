@@ -24,7 +24,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 echo ""
 info "=== Einzelcheck ==="
-for name in pihole unbound tor websurfx jellyfin ollama syncthing uptime-kuma nextcloud-aio sonarr radarr prowlarr bazarr caddy; do
+for name in pihole unbound tor websurfx jellyfin ollama open-webui n8n syncthing uptime-kuma nextcloud-aio sonarr radarr prowlarr bazarr sabnzbd heimdall caddy; do
     state=$(docker inspect --format='{{.State.Status}}' "$name" 2>/dev/null || echo "?")
     case "$state" in
         running) log "$name läuft" ;;

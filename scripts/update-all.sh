@@ -26,6 +26,9 @@ done
 info "=== KI-Modelle aktualisieren ==="
 docker exec ollama ollama pull mistral:7b 2>/dev/null || warn "Ollama nicht erreichbar"
 docker exec ollama ollama pull llama3.2:3b 2>/dev/null || true
+docker exec ollama ollama pull deepseek-coder:6.7b 2>/dev/null || true
+docker exec ollama ollama pull llama3.2:8b 2>/dev/null || true
+docker exec ollama ollama pull phi4:14b 2>/dev/null || true
 
 info "=== Pi-hole aktualisieren ==="
 docker exec pihole pihole -up 2>/dev/null || warn "Pi-hole nicht erreichbar"

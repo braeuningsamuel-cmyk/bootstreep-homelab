@@ -231,7 +231,7 @@ async def cmd_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/briefing – Tägliche Zusammenfassung"""
     await update.message.reply_text('📰 *Erstelle Briefing...*', parse_mode='Markdown')
     try:
-        from ai_agent.daily_briefing import get_briefing
+        from daily import get_briefing
         briefing = await get_briefing()
         await update.message.reply_text(briefing[:4000], parse_mode='Markdown')
     except ImportError:

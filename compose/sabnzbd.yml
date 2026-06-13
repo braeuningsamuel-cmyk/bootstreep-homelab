@@ -1,0 +1,24 @@
+services:
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    volumes:
+      - sabnzbd_config:/config
+      - ~/downloads:/downloads
+      - ~/media:/media
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    networks:
+      - homelab
+
+volumes:
+  sabnzbd_config:
+
+networks:
+  homelab:
+    external: true
