@@ -267,6 +267,34 @@ services:
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
 
+  # ─── GAMESERVER ───────────────────────────────────────────
+  teamspeak:
+    <<: *common
+    image: teamspeak:latest
+    container_name: teamspeak
+    ports:
+      - "9987:9987/udp"
+      - "10011:10011"
+      - "30033:30033"
+    volumes:
+      - teamspeak_data:/var/ts3server
+    environment:
+      - TS3SERVER_LICENSE=accept
+
+  amp:
+    <<: *common
+    image: ghcr.io/cubecoders/amp:latest
+    container_name: amp
+    ports:
+      - "8087:8080"
+      - "8088:8088"
+    volumes:
+      - amp_data:/amp
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - AMP_UID=1000
+      - AMP_GID=1000
+
   # ─── REVERSE PROXY ───────────────────────────────────────
   caddy:
     <<: *common
@@ -300,6 +328,8 @@ volumes:
   syncthing_data:
   uptime_kuma_data:
   heimdall_config:
+  teamspeak_data:
+  amp_data:
   caddy_data:
   caddy_config:
 

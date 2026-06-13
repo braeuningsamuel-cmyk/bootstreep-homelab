@@ -22,6 +22,8 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | **Cloud & Sync** | Nextcloud AIO + Syncthing |
 | **Dashboard** | Heimdall (Startseite für alle Dienste) |
 | **Monitoring** | Uptime Kuma |
+| **Voice** | TeamSpeak3 |
+| **Game-Server** | AMP (Minecraft, Valheim uvm.) |
 | **Reverse Proxy** | Caddy (Auto-HTTPS) |
 | **VPN** | WireGuard via PiVPN oder Tailscale |
 | **Netzwerkfreigabe** | Samba |
@@ -56,6 +58,7 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 │  │  Jellyfin + Arr-Stack   │  │
 │  │  Nextcloud + Syncthing  │  │
 │  │  Heimdall + Uptime Kuma │  │
+│  │  TeamSpeak + AMP       │  │
                     │  └─────────────────────────┘  │
                     │                              │
                     │  ┌──────────────────────┐    │
@@ -85,7 +88,8 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | Open WebUI | `3002` | Docker |
 | n8n | `5678` | Docker |
 | Ollama API | `11434` (127.0.0.1) | Docker |
-| AMP | `8087` | Systemd |
+| TeamSpeak3 | `9987/udp` / `10011` / `30033` | Docker |
+| AMP | `8087` / `8088` | Docker |
 | Uptime Kuma | `3001` | Docker |
 | Syncthing | `8384` / `22000` / `21027/udp` | Docker |
 | WireGuard | `51820/udp` | PiVPN |
@@ -204,6 +208,8 @@ atlaslab-homelab-bootstrap/
 │   ├── nextcloud.yml         # Cloud
 │   ├── uptime-kuma.yml       # Monitoring
 │   ├── heimdall.yml          # Dashboard
+│   ├── teamspeak.yml         # Sprachserver (Port 9987)
+│   ├── amp.yml               # Game-Server-Manager (Port 8087)
 │   └── caddy.yml             # Reverse Proxy
 ├── cloud-init/               # Automatische Provisionierung
 │   └── user-data.example

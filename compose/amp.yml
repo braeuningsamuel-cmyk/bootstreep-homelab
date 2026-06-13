@@ -1,0 +1,23 @@
+services:
+  amp:
+    image: ghcr.io/cubecoders/amp:latest
+    container_name: amp
+    restart: unless-stopped
+    ports:
+      - "8087:8080"
+      - "8088:8088"
+    volumes:
+      - amp_data:/amp
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - AMP_UID=1000
+      - AMP_GID=1000
+    networks:
+      - homelab
+
+volumes:
+  amp_data:
+
+networks:
+  homelab:
+    external: true

@@ -176,7 +176,7 @@ section_2_docker() {
     log "Docker-Verzeichnisstruktur anlegen..."
     mkdir -p ~/docker
     for dir in dns tor websurfx ollama open-webui jellyfin sabnzbd n8n sonarr radarr prowlarr bazarr \
-               syncthing nextcloud uptime-kuma caddy hermes heimdall; do
+               syncthing nextcloud uptime-kuma caddy hermes heimdall teamspeak amp; do
         mkdir -p ~/docker/"$dir"
     done
 }
@@ -474,17 +474,23 @@ EOSMB
         log "→ Wöchentliches Update (So 3 Uhr), Backup (So 4 Uhr), Health-Check (alle 30 Min)"
     }
 
+    # TeamSpeak Sprachserver
+    log "TeamSpeak-Server starten..."
+    cp compose/teamspeak.yml ~/docker/teamspeak/compose.yml
+    dc_up teamspeak "TeamSpeak3"
+
+    # AMP Game Server Manager
+    log "AMP Game-Server-Manager starten..."
+    cp compose/amp.yml ~/docker/amp/compose.yml
+    dc_up amp "AMP"
+    log "→ AMP Web-UI: http://$SERVER_IP:8087 (Lizenz nach Start eintragen)"
+    warn "Alternativ: bash <(wget -qO- https://getamp.sh)"
+
     # Caddy Reverse Proxy
     log "Caddy Reverse-Proxy starten..."
     cp compose/caddy.yml ~/docker/caddy/compose.yml
     cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile 2>/dev/null || true
     dc_up caddy "Caddy"
-
-    warn "Game-Server (AMP) manuell installieren:"
-    warn "  bash <(wget -qO- https://getamp.sh)"
-    warn "  → Docker=yes, Minecraft=yes, Steam=yes"
-    warn "  → Web-UI: http://$SERVER_IP:8087"
-    warn ""
 
     warn "Playit.gg (Tunnel) manuell:"
     warn "  curl -SsL https://playit.cloud/install.sh | bash"
@@ -671,7 +677,7 @@ main() {
     local running=0 expected=0
     for container in pihole unbound tor websurfx jellyfin ollama hermes open-webui \
                      sabnzbd sonarr radarr prowlarr bazarr n8n syncthing \
-                     nextcloud-aio uptime-kuma heimdall caddy; do
+                     nextcloud-aio uptime-kuma heimdall teamspeak amp caddy; do
         expected=$((expected + 1))
         if docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null | grep -q "running"; then
             running=$((running + 1))
@@ -700,6 +706,8 @@ main() {
     echo "    SABnzbd     → http://$SERVER_IP:8085"
     echo "    Heimdall    → http://$SERVER_IP:8090"
     echo "    Uptime Kuma → http://$SERVER_IP:3001"
+    echo "    TeamSpeak3  → $SERVER_IP:9987 (Voice)"
+    echo "    AMP         → http://$SERVER_IP:8087"
     echo "    Sonarr      → http://$SERVER_IP:8989"
     echo "    Radarr      → http://$SERVER_IP:7878"
     echo "    Prowlarr    → http://$SERVER_IP:9696"
