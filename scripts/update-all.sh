@@ -40,6 +40,6 @@ docker exec pihole pihole -up 2>/dev/null || warn "Pi-hole nicht erreichbar"
 docker exec pihole pihole -g 2>/dev/null || true
 
 info "=== Docker-Cleanup ==="
-docker system prune -af --volumes 2>/dev/null || true
+docker image prune -af 2>/dev/null || true
 
 log "Update abgeschlossen!"

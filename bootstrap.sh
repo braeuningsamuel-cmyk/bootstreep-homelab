@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v3.6.0
+# Bootstreep Homelab Bootstrap v3.7.0
 # Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
 #
 # Usage:
@@ -193,8 +193,9 @@ section_2_docker() {
 
     if ! docker info &>/dev/null; then
         if sudo docker info &>/dev/null; then
-            warn "Docker-Socket nur per sudo erreichbar – versuche newgrp docker ..."
-            newgrp docker
+            warn "Docker-Socket nur per sudo erreichbar. Führe nach dem Setup aus: newgrp docker"
+            alias docker='sudo docker'
+            alias docker compose='sudo docker compose'
         else
             die "Docker-Daemon läuft nicht oder nicht erreichbar. Bitte prüfen: systemctl status docker"
         fi

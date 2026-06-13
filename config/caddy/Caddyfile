@@ -1,5 +1,14 @@
+(security_headers) {
+    header {
+        Strict-Transport-Security "max-age=63072000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+    }
+}
+
 http://__SERVER_IP__:80 {
-    root * /home/__USER__/atlaslab-dashboard/src
+    root * /home/__USER__/bootstreep-dashboard/src
     file_server
 }
 
@@ -11,13 +20,4 @@ cloud.deine-domain.de {
 media.deine-domain.de {
     import security_headers
     reverse_proxy jellyfin:8096
-}
-
-(security_headers) {
-    header {
-        Strict-Transport-Security "max-age=63072000"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "no-referrer"
-    }
 }

@@ -24,7 +24,7 @@ services:
       - "127.0.0.1:5335:53/udp"
       - "127.0.0.1:5335:53/tcp"
     volumes:
-      - ./config/dns/unbound.conf:/opt/unbound/unbound.conf:ro
+      - ./unbound.conf:/opt/unbound/unbound.conf:ro
 
   pihole:
     <<: *common
