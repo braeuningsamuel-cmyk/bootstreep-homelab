@@ -29,6 +29,7 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | **Netzwerkfreigabe** | Samba |
 | **Game-Server** | AMP (Minecraft, Valheim uvm.) |
 | **📱 KI-Agent** | Telegram Bot mit Server-Steuerung, Daily Briefing, E-Mail, Kalender |
+| **🖥️ Eigenes Dashboard** | Atlas.Lab Server Control – Caddy-Server (Port 80) + Desktop-App (Tauri) |
 
 ## Architektur
 
@@ -77,7 +78,8 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | Unbound | `5335` (127.0.0.1) | Docker |
 | Websurfx | `8080` | Docker |
 | Tor | `9050` (127.0.0.1) | Docker |
-| Caddy | `80` / `443` | Docker |
+| Atlas.Lab Dashboard | `80` | Caddy (Statisch) |
+| Caddy | `443` | Docker |
 | Nextcloud AIO | `8082` / `9443` | Docker |
 | Jellyfin | `8096` | Docker |
 | Sonarr | `8989` | Docker |

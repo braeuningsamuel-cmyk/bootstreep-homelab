@@ -1,3 +1,8 @@
+http://__SERVER_IP__:80 {
+    root * /home/__USER__/atlaslab-dashboard/src
+    file_server
+}
+
 cloud.deine-domain.de {
     import security_headers
     reverse_proxy nextcloud-aio:8080

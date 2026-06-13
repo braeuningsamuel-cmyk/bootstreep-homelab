@@ -490,6 +490,8 @@ EOSMB
     log "Caddy Reverse-Proxy starten..."
     cp compose/caddy.yml ~/docker/caddy/compose.yml
     cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile 2>/dev/null || true
+    sed -i "s/__SERVER_IP__/$SERVER_IP/g" ~/docker/caddy/Caddyfile 2>/dev/null || true
+    sed -i "s/__USER__/$USER/g" ~/docker/caddy/Caddyfile 2>/dev/null || true
     dc_up caddy "Caddy"
 
     warn "Playit.gg (Tunnel) manuell:"
@@ -541,6 +543,42 @@ section_13_gpu() {
         read -rp "Jetzt neu starten? (y/N): " reboot_nvidia
         [ "$reboot_nvidia" = "y" ] || [ "$reboot_nvidia" = "Y" ] && sudo reboot
     fi
+}
+
+# ─── 14. ATLAS.LAB DASHBOARD ────────────────────────────────────────────────
+section_14_dashboard() {
+    echo ""
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║ 14.  ATLAS.LAB DASHBOARD                          ║"
+    echo "╚══════════════════════════════════════════════════╝"
+
+    log "Dashboard-Repository klonen..."
+    if [ -d ~/atlaslab-dashboard/.git ]; then
+        log "Dashboard bereits vorhanden – aktualisiere..."
+        cd ~/atlaslab-dashboard && git pull
+    else
+        git clone https://github.com/braeuningsamuel-cmyk/atlaslab-dashboard.git ~/atlaslab-dashboard
+    fi
+
+    log "Caddy-Route für Dashboard konfigurieren..."
+    if [ -f ~/docker/caddy/Caddyfile ]; then
+        if ! grep -q "atlaslab-dashboard" ~/docker/caddy/Caddyfile 2>/dev/null; then
+            # Dashboard-Catchall-Vor Caddy-Konfiguration einfügen
+            sed -i "1i http://$SERVER_IP:80 {\n    root * /home/$USER/atlaslab-dashboard/src\n    file_server\n}\n" ~/docker/caddy/Caddyfile
+            log "→ Dashboard läuft auf http://$SERVER_IP:80"
+            # Caddy neu laden
+            docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || \
+                docker restart caddy 2>/dev/null || true
+        else
+            log "Dashboard-Route bereits in Caddy vorhanden."
+        fi
+    else
+        warn "Caddy-Konfiguration nicht gefunden – Dashboard später per Caddy bereitstellen."
+    fi
+
+    log "Dashboard bereit: http://$SERVER_IP:80 (via Caddy) oder Desktop-App"
+    warn "→ Desktop-App bauen: git clone https://github.com/braeuningsamuel-cmyk/atlaslab-dashboard.git"
+    warn "→ Dann: npm install && npm run tauri dev"
 }
 
 # ─── 12. AI AGENT (TELEGRAM BOT + ASSISTANT) ─────────────────────────────────
@@ -659,6 +697,7 @@ main() {
     [ -z "${STEP11:-}" ] && { section_11_wireguard; save_progress "STEP11"; }
     [ -z "${STEP12:-}" ] && { section_12_ai_agent;  save_progress "STEP12"; }
     [ -z "${STEP13:-}" ] && { section_13_gpu;      save_progress "STEP13"; }
+    [ -z "${STEP14:-}" ] && { section_14_dashboard;   save_progress "STEP14"; }
 
     # Falls der Benutzer neu zur docker-Gruppe hinzugefügt wurde
     if groups "$USER" | grep -q docker; then
@@ -713,7 +752,7 @@ main() {
     echo "    Prowlarr    → http://$SERVER_IP:9696"
     echo "    Bazarr      → http://$SERVER_IP:6767"
     echo "    Syncthing   → http://$SERVER_IP:8384"
-    echo "    AMP         → http://$SERVER_IP:8087"
+    echo "    Dashboard   → http://$SERVER_IP:80"
     echo ""
     echo "  VPN (PiVPN):  $SERVER_IP:51820/udp"
     echo "  Samba:        \\\\$SERVER_IP\\media"
@@ -723,6 +762,10 @@ main() {
     echo "    ~/scripts/backup-all.sh    – Backup erstellen"
     echo "    ~/scripts/health-check.sh  – Status prüfen"
     echo "    ~/scripts/dnssec-test.sh   – DNSSEC-Validierung testen"
+    echo ""
+    echo "  Dashboard:"
+    echo "    http://$SERVER_IP:80        – Web-Dashboard"
+    echo "    ~/atlaslab-dashboard/       – Desktop-Quellcode"
     echo ""
     echo "  AI Agent (Telegram):"
     echo "    nano ~/ai-agent/.env       – Token eintragen"
