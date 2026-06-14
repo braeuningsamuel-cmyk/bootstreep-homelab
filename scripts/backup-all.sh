@@ -24,7 +24,16 @@ log "Pi-hole Teleporter-Export..."
 docker exec pihole pihole -a -t "$BACKUP/teleporter.tar.gz" 2>/dev/null || warn "Pi-hole Teleporter fehlgeschlagen"
 
 log "Umgebungsvariablen sichern..."
-cp ~/docker/*/.env "$BACKUP"/ 2>/dev/null || true
+if cp ~/docker/*/.env "$BACKUP"/ 2>/dev/null; then
+    if command -v gpg &>/dev/null && [ -n "${BACKUP_GPG_RECIPIENT:-}" ]; then
+        for f in "$BACKUP"/*.env; do
+            [ -f "$f" ] && gpg --yes --recipient "$BACKUP_GPG_RECIPIENT" --encrypt "$f" && rm "$f"
+        done
+        log ".env-Dateien mit GPG verschlüsselt"
+    else
+        warn ".env-Dateien unverschlüsselt (GPG nicht konfiguriert)"
+    fi
+fi
 
 log "SSH-Konfiguration sichern..."
 sudo cp /etc/ssh/sshd_config "$BACKUP"/ 2>/dev/null || true

@@ -1,4 +1,4 @@
-# Bootstreep Homelab – Alle Dienste (Merged) v3.6.0
+# Bootstreep Homelab – Alle Dienste (Merged) v3.9.1
 # Usage: docker compose -f docker-compose-all.yml up -d
 #
 # Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:
@@ -441,7 +441,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     healthcheck:

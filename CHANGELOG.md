@@ -1,5 +1,31 @@
 # Changelog
 
+## v3.9.1 (2026-06-14) – Security Audit Fixes
+
+### Security
+- **bootstrap.sh**: Code Injection via `source "$PROGRESS_FILE"` → SichereParser
+- **telegram-bot.py**: Shell Injection via `shell=True` → Command-Whitelist + `shell=False`
+- **telegram-bot.py**: Unauthentifizierter Zugriff verhindert (ALLOWED_CHAT_IDS muss gesetzt sein)
+
+### Fixes
+- **docker-compose-all.yml**: Caddy Volume-Pfad korrigiert (`./docker/caddy/` → `./caddy/`)
+- **Fail2Ban**: `logpath` entfernt, `backend = systemd` für Ubuntu 24.04
+- **Versionen**: Alle Dateien auf v3.9.1 synchronisiert
+
+## v3.9.0 (2026-06-14) – Persönliche Daten entfernt
+
+### Cleanup
+- GitHub-Username durch `YOUR_GITHUB_USERNAME` ersetzt
+- `atlaslab-dashboard` Referenzen in bootstrap.sh entfernt
+- `ATLAS.LAB DASHBOARD` → `BOOTSTREEP DASHBOARD`
+
+## v3.8.0 (2026-06-14) – Security Hardening für alle Compose Files
+
+### Security
+- Alle 20 individuellen Compose-Files: `security_opt: [no-new-privileges:true]` + `cap_drop: [ALL]`
+- Healthchecks für alle Services
+- `json-file` Logging mit `max-size: 10m` + `max-file: 3`
+
 ## v3.7.0 (2026-06-13) – Healthchecks & Deployment Optimierung
 
 ### Compose

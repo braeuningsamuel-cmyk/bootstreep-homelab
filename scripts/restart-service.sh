@@ -11,7 +11,13 @@ fi
 
 NAME="$1"
 echo "Starte $NAME neu..."
-docker compose -f ~/docker/"$NAME"/compose.yml restart 2>/dev/null || \
-    docker restart "$NAME" 2>/dev/null || \
+if docker compose -f ~/docker/"$NAME"/compose.yml restart 2>/dev/null; then
+    docker ps --filter "name=$NAME" --format "{{.Names}} {{.Status}}"
+    exit 0
+elif docker restart "$NAME" 2>/dev/null; then
+    docker ps --filter "name=$NAME" --format "{{.Names}} {{.Status}}"
+    exit 0
+else
     echo "Container $NAME nicht gefunden"
-docker ps --filter "name=$NAME" --format "{{.Names}} {{.Status}}"
+    exit 1
+fi

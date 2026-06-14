@@ -17,4 +17,9 @@ if [ "${1:-}" = "-f" ]; then
     FOLLOW="-f"
 fi
 
-docker logs $FOLLOW "$NAME" 2>&1 || echo "Container $NAME nicht gefunden"
+if docker logs $FOLLOW "$NAME" 2>&1; then
+    exit 0
+else
+    echo "Container $NAME nicht gefunden"
+    exit 1
+fi

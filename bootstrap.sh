@@ -89,7 +89,7 @@ dc_up_parallel() {
 # Logging sofort starten (auch für Pre-Flight)
 LOG_FILE="${HOME_DIR:-$HOME}/bootstrap.log"
 exec &> >(tee -a "$LOG_FILE")
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.6.0 gestartet"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.9.1 gestartet"
 
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
@@ -193,9 +193,8 @@ section_2_docker() {
 
     if ! docker info &>/dev/null; then
         if sudo docker info &>/dev/null; then
-            warn "Docker-Socket nur per sudo erreichbar. Führe nach dem Setup aus: newgrp docker"
-            alias docker='sudo docker'
-            alias docker compose='sudo docker compose'
+            warn "Docker-Socket nur per sudo erreichbar. Verwende 'sudo docker' für alle Befehle."
+            warn "→ Für Docker-Zugriff ohne sudo: newgrp docker in neuer Shell ausführen."
         else
             die "Docker-Daemon läuft nicht oder nicht erreichbar. Bitte prüfen: systemctl status docker"
         fi
@@ -353,7 +352,7 @@ backend = systemd
 enabled = true
 port = ssh
 filter = sshd
-logpath = /var/log/auth.log
+backend = systemd
 maxretry = 3
 bantime = 3600
 EOF2
@@ -771,7 +770,11 @@ main() {
 
     load_progress() {
         if [ -f "$PROGRESS_FILE" ]; then
-            source "$PROGRESS_FILE"
+            while IFS='=' read -r key value; do
+                if [[ "$key" =~ ^STEP[0-9]+$ && "$value" == "done" ]]; then
+                    eval "$key=done"
+                fi
+            done < "$PROGRESS_FILE"
         fi
     }
 

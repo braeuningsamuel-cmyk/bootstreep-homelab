@@ -22,7 +22,8 @@ bootstrap.sh starten
     ├── 10. Zugriff (Samba + Uptime Kuma + Caddy + Cron)
     ├── 11. WireGuard VPN + Tailscale
     ├── 12. AI Agent (Telegram Bot)
-    └── 13. NVIDIA GPU (optional)
+    ├── 13. NVIDIA GPU (optional)
+    └── 14. Bootstreep Dashboard
 ```
 
 ## Fortschrittsverfolgung

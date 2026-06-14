@@ -27,7 +27,6 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | **Reverse Proxy** | Caddy (Auto-HTTPS) |
 | **VPN** | WireGuard via PiVPN oder Tailscale |
 | **Netzwerkfreigabe** | Samba |
-| **Game-Server** | AMP (Minecraft, Valheim uvm.) |
 | **📱 KI-Agent** | Telegram Bot mit Server-Steuerung, Daily Briefing, E-Mail, Kalender |
 | **🖥️ Eigenes Dashboard** | Bootstreep Server Control – Caddy-Server (Port 80) + Desktop-App (Tauri) |
 
@@ -52,14 +51,14 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
                     │  │  Docker Netzwerk        │  │
                     │  │  "homelab"              │  │
                     │  │                         │  │
-│  │  Pi-hole  ←  Unbound    │  │
-│  │  Tor → Websurfx         │  │
-│  │  Ollama + Open WebUI    │  │
-│  │  Hermes + n8n           │  │
-│  │  Jellyfin + Arr-Stack   │  │
-│  │  Nextcloud + Syncthing  │  │
-│  │  Heimdall + Uptime Kuma │  │
-│  │  TeamSpeak + AMP       │  │
+                    │  │  Pi-hole  ←  Unbound    │  │
+                    │  │  Tor → Websurfx         │  │
+                    │  │  Ollama + Open WebUI    │  │
+                    │  │  Hermes + n8n           │  │
+                    │  │  Jellyfin + Arr-Stack   │  │
+                    │  │  Nextcloud + Syncthing  │  │
+                    │  │  Heimdall + Uptime Kuma │  │
+                    │  │  TeamSpeak + AMP        │  │
                     │  └─────────────────────────┘  │
                     │                              │
                     │  ┌──────────────────────┐    │
@@ -300,4 +299,4 @@ MIT – siehe [LICENSE](LICENSE).
 
 ---
 
-*Bootstreep Homelab v3.5.0*
+*Bootstreep Homelab v3.9.1*

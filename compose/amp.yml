@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    # cap_drop: ALL nicht möglich - AMP benötigt Docker Socket für Game-Server Management
     ports:
       - "8087:8080"
       - "8088:8088"

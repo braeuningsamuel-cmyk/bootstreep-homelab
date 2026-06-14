@@ -16,11 +16,8 @@ Usage:
 
 import os
 import asyncio
-import json
-import re
 from datetime import datetime, date
 from pathlib import Path
-from typing import Optional
 from xml.etree import ElementTree
 
 from dotenv import load_dotenv
@@ -147,13 +144,18 @@ async def get_calendar() -> str:
         return ''
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(CALENDAR_ICS_URL, timeout=10) as resp:
+            async with session.get(CALENDAR_ICS_URL, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 text = await resp.text()
 
-        today = date.today()
+        today = date.today().strftime('%Y%m%d')
         events = []
+        in_today = False
         for line in text.split('\n'):
-            if line.startswith('SUMMARY:'):
+            if line.startswith('DTSTART') and today in line:
+                in_today = True
+            elif line.startswith('DTSTART') and today not in line:
+                in_today = False
+            elif in_today and line.startswith('SUMMARY:'):
                 events.append(line[8:])
         if events:
             return '📅 *Termine heute:*\n' + '\n'.join(f'• {e}' for e in events[:5])

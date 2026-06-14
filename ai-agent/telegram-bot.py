@@ -18,9 +18,7 @@ Basiert auf dem Konzept aus Homelab-Server-Guide v3.3
 """
 
 import os
-import asyncio
 import subprocess
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -47,22 +45,36 @@ logger = logging.getLogger(__name__)
 
 # ─── Autorisierung ────────────────────────────────────────────────────────────
 def authorized(func):
-    """Decorator: Nur autorisierte Chat-IDs"""
+    """Decorator: Nur autorisierte Chat-IDs (ALLOWED_CHAT_IDS muss gesetzt sein)"""
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not update.effective_chat:
             return
-        if ALLOWED_CHAT_IDS and update.effective_chat.id not in ALLOWED_CHAT_IDS:
+        if not ALLOWED_CHAT_IDS:
+            await update.message.reply_text('⛔ Keine Chat-IDs konfiguriert. Setze ALLOWED_CHAT_IDS in .env')
+            return
+        if update.effective_chat.id not in ALLOWED_CHAT_IDS:
             await update.message.reply_text('⛔ Nicht autorisiert.')
             return
         return await func(update, context)
     return wrapper
 
 # ─── Shell-Ausführung ────────────────────────────────────────────────────────
+ALLOWED_CMDS = {'docker', 'systemctl', 'journalctl', 'cat', 'ls', 'df', 'free',
+                'uptime', 'ps', 'top', 'ip', 'ping', 'dig', 'curl', 'wget',
+                'tail', 'head', 'grep', 'find', 'du', 'stat', 'whoami', 'id'}
+
 def run_cmd(cmd: str, timeout: int = 30) -> str:
-    """Führt einen Shell-Befehl aus und gibt die Ausgabe zurück."""
+    """Führt einen sicheren Shell-Befehl aus."""
+    import shlex
     try:
+        parts = shlex.split(cmd)
+        if not parts:
+            return '❌ Leerer Befehl'
+        base = parts[0].split('/')[-1]
+        if base not in ALLOWED_CMDS:
+            return f'❌ Befehl "{base}" nicht erlaubt. Erlaubt: {", ".join(sorted(ALLOWED_CMDS))}'
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
+            parts, shell=False, capture_output=True, text=True, timeout=timeout
         )
         out = result.stdout.strip()
         err = result.stderr.strip()
