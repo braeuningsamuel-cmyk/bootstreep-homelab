@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.10.0 (2026-06-14) – 30-Bug Audit
+
+### Security (CRITICAL)
+- **lib.rs**: Command-Injection via `process_kill` → Signal-Whitelist validierung
+- **capabilities**: 44 `bootstreep:allow-*` Berechtigungen hinzugefügt
+
+### Fixes (HIGH)
+- **nextcloud.yml / amp.yml**: Cap_Drop ALL Kommentare hinzugefügt (Docker Socket)
+- **bootstrap.sh**: Bash-Aliases entfernt (zerstören non-interactive shells)
+- **backup-all.sh**: .env Verschlüsselung via GPG (optional)
+
+### Fixes (MEDIUM)
+- **daily_briefing.py**: Unused imports entfernt, Kalender-Filter korrigiert
+- **telegram-bot.py**: Unused imports entfernt
+- **bootstrap-flow.md**: Step 14 (Dashboard) hinzugefügt
+- **lib.rs**: Redundanter Import entfernt
+- **README.md**: Doppelte Game-Server Zeile entfernt
+
+### Fixes (LOW)
+- **README.md**: ASCII-Diagramm Ausrichtung korrigiert
+- **restart-service.sh / logs.sh**: Korrekte Exit-Codes
+
 ## v3.9.1 (2026-06-14) – Security Audit Fixes
 
 ### Security
