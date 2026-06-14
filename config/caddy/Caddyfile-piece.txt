@@ -1,4 +1,0 @@
-amp.__SERVER_IP__.sslip.io {
-    import security_headers
-    reverse_proxy amp:8080
-}
