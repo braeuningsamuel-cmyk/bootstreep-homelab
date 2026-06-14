@@ -1,4 +1,4 @@
-# Bootstreep Homelab – Alle Dienste (Merged) v3.9.1
+# Bootstreep Homelab – Alle Dienste (Merged) v3.11.0
 # Usage: docker compose -f docker-compose-all.yml up -d
 #
 # Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:
@@ -471,6 +471,9 @@ volumes:
   prowlarr_config:
   bazarr_config:
   n8n_data:
+  minecraft_data:
+  valheim_data:
+  valheim_config:
   open_webui_data:
   syncthing_data:
   uptime_kuma_data:
@@ -483,3 +486,5 @@ volumes:
 networks:
   homelab:
     external: true
+
+

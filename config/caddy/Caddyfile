@@ -21,3 +21,8 @@ media.deine-domain.de {
     import security_headers
     reverse_proxy jellyfin:8096
 }
+
+amp.__SERVER_IP__.sslip.io {
+    import security_headers
+    reverse_proxy amp:8080
+}

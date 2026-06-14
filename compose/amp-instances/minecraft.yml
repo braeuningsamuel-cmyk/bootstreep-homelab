@@ -1,0 +1,42 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    volumes:
+      - minecraft_data:/data
+    environment:
+      - EULA=true
+      - VERSION=LATEST
+      - DIFFICULTY=normal
+      - MAX_PLAYERS=10
+      - MOTD=Bootstreep Minecraft Server
+      - ENABLE_RCON=true
+      - RCON_PASSWORD=changeme
+      - SEED=-215237419
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: mc-health
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - homelab
+
+volumes:
+  minecraft_data:
+
+networks:
+  homelab:
+    external: true

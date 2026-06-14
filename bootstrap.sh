@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v3.7.0
+# Bootstreep Homelab Bootstrap v3.11.0
 # Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
 #
 # Usage:
@@ -89,7 +89,7 @@ dc_up_parallel() {
 # Logging sofort starten (auch für Pre-Flight)
 LOG_FILE="${HOME_DIR:-$HOME}/bootstrap.log"
 exec &> >(tee -a "$LOG_FILE")
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.9.1 gestartet"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.11.0 gestartet"
 
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
@@ -601,6 +601,13 @@ EOSMB
     log "→ AMP Web-UI: http://$SERVER_IP:8087 (Lizenz nach Start eintragen)"
     warn "Alternativ: bash <(wget -qO- https://getamp.sh)"
 
+    # AMP Game-Server-Instanzen (optional, standalone)
+    log "AMP Game-Server-Instanzen kopieren (Minecraft + Valheim)..."
+    cp compose/amp-instances/*.yml ~/docker/amp-instances/ 2>/dev/null || true
+    cp compose/amp-instances/README.md ~/docker/amp-instances/ 2>/dev/null || true
+    log "? Game-Instanzen: docker compose -f ~/docker/amp-instances/minecraft.yml up -d"
+    info "? Minecraft: Port 25565, Valheim: Port 2456-2458 (UDP)"
+
     # Caddy Reverse Proxy
     log "Caddy Reverse-Proxy starten..."
     cp compose/caddy.yml ~/docker/caddy/compose.yml
@@ -786,7 +793,7 @@ main() {
 
     echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║     BOOTSTREEP HOMELAB BOOTSTRAP v3.7.0            ║"
+echo "║     Bootstreep Homelab Bootstrap v3.11.0            ║"
 echo "╚══════════════════════════════════════════════════╝"
     echo ""
 
@@ -896,3 +903,4 @@ echo "╚═══════════════════════�
 }
 
 main "$@"
+

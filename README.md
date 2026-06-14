@@ -24,7 +24,7 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | **Monitoring** | Uptime Kuma |
 | **Voice** | TeamSpeak3 |
 | **Game-Server** | AMP (Minecraft, Valheim uvm.) |
-| **Reverse Proxy** | Caddy (Auto-HTTPS) |
+| **Game-Instanzen (optional)** | Minecraft + Valheim (als AMP-Alternative) |`n| **Reverse Proxy** | Caddy (Auto-HTTPS) |
 | **VPN** | WireGuard via PiVPN oder Tailscale |
 | **Netzwerkfreigabe** | Samba |
 | **📱 KI-Agent** | Telegram Bot mit Server-Steuerung, Daily Briefing, E-Mail, Kalender |
@@ -115,7 +115,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub admin@192.168.178.20
 Dann auf dem Server:
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-homelab.git
+git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git
 cd bootstreep-homelab
 chmod +x bootstrap.sh
 ./bootstrap.sh
@@ -300,3 +300,5 @@ MIT – siehe [LICENSE](LICENSE).
 ---
 
 *Bootstreep Homelab v3.10.0*
+
+
