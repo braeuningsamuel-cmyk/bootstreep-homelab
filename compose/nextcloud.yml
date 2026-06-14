@@ -29,3 +29,4 @@ services:
 networks:
   homelab:
     external: true
+

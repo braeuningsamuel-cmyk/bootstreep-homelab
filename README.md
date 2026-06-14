@@ -299,6 +299,7 @@ MIT – siehe [LICENSE](LICENSE).
 
 ---
 
-*Bootstreep Homelab v3.10.0*
+*Bootstreep Homelab v3.11.0*
+
 
 

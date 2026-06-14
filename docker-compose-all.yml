@@ -9,7 +9,7 @@
 
 x-common: &common
   restart: unless-stopped
-  security_opt: [no-new-privileges:true]
+  security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
   networks:
     - homelab
@@ -320,6 +320,7 @@ services:
   # ─── CLOUD & SYNC ────────────────────────────────────────
   nextcloud-aio:
     <<: *common
+    cap_drop: []  # Docker Socket ben�tigt volle Caps
     image: nextcloud/all-in-one:latest
     container_name: nextcloud-aio
     ports:
@@ -414,6 +415,7 @@ services:
 
   amp:
     <<: *common
+    cap_drop: []  # Docker Socket ben�tigt volle Caps
     image: ghcr.io/cubecoders/amp:latest
     container_name: amp
     ports:
@@ -486,5 +488,8 @@ volumes:
 networks:
   homelab:
     external: true
+
+
+
 
 

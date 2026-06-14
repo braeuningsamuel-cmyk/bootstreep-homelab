@@ -36,3 +36,4 @@ volumes:
 networks:
   homelab:
     external: true
+
