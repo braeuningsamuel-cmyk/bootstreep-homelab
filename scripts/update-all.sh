@@ -23,6 +23,15 @@ for d in */; do
     fi
 done
 
+info "=== AMP Game-Instanzen updaten ==="
+if [ -d ~/docker/amp-instances ]; then
+    for f in ~/docker/amp-instances/*.yml; do
+        name=$(basename "$f" .yml)
+        log "Update: amp-instances/$name"
+        (cd ~/docker/amp-instances && docker compose -f "$name.yml" pull && docker compose -f "$name.yml" up -d) || warn "$name Update fehlgeschlagen"
+    done
+fi
+
 info "=== KI-Modelle aktualisieren ==="
 MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
 for model in $MODELS; do

@@ -8,7 +8,6 @@ Wird vom Telegram-Bot verwendet.
 import subprocess
 import os
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 load_dotenv(Path.home() / 'ai-agent' / '.env')

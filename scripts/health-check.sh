@@ -35,7 +35,7 @@ done
 
 echo ""
 info "=== DNS Test ==="
-SERVER_IP="${SERVER_IP:-192.168.178.20}"
+SERVER_IP="${SERVER_IP:-$(hostname -I | awk '{print $1}')}"
 if dig google.de @"$SERVER_IP" +short &>/dev/null; then
     log "DNS-Auflösung funktioniert ($SERVER_IP)"
 else

@@ -1,5 +1,34 @@
 # Changelog
 
+## v3.11.2 (2026-06-15) – Docker-Images stabilisiert
+
+### Fixes (CRITICAL)
+- **open-webui.yml**: Doppelter Tag `:v0.9.6:main` → `:v0.9.6` korrigiert
+- **uptime-kuma.yml**: Doppelter Tag `:2:latest` → `:2` korrigiert
+
+### Fixes (HIGH)
+- **nextcloud.yml**: Explizites `cap_drop: ALL` hinzugefügt
+- **bootstrap.sh**: `amp-instances` in mkdir-Loop aufgenommen
+- **bootstrap.sh**: YOUR_GITHUB_USERNAME Platzhalter-Validierung hinzugefügt
+- **bootstrap.sh**: Caddyfile-Copy: Silent Fail (`|| true`) entfernt
+- **CHANGELOG.md**: v3.11.0, v3.11.1, v3.11.2 Einträge ergänzt
+
+### Fixes (MEDIUM)
+- **bootstrap.sh / README.md / docker-compose-all.yml**: Version v3.11.0 → v3.11.2
+- **README.md**: Garbled Markdown-Tabelle korrigiert (`|`n`-Artefakt entfernt)
+- **README.md**: `--send-telegram` → `--telegram` (korrektes Flag)
+- **telegram-bot.py**: Unused Import `datetime` entfernt
+- **server_commands.py**: Unused Import `Optional` entfernt
+- **restart-service.sh**: `nextcloud-aio` → `nextcloud` Ordnernamen-Mapping
+- **bootstrap.sh**: Timeout (600s) für Modell-Pulls hinzugefügt
+
+### Fixes (LOW)
+- **bootstrap.sh**: `amp-instances` mkdir vor Copy (Silent Fail behoben)
+- **docker-compose-all.yml**: Hermes: `npm install` nur bei fehlendem `node_modules`
+- **update-all.sh**: AMP Game-Instanzen-Sub-Loop hinzugefügt
+- **backup-all.sh**: Keine `.env`-Dateien: Informative Meldung statt Stille
+- **health-check.sh**: Hardcodierte IP → `hostname -I` dynamisch
+
 ## v3.10.0 (2026-06-14) – 30-Bug Audit
 
 ### Security (CRITICAL)

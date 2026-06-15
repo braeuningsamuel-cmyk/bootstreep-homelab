@@ -20,7 +20,6 @@ Basiert auf dem Konzept aus Homelab-Server-Guide v3.3
 import os
 import subprocess
 import logging
-from datetime import datetime
 from pathlib import Path
 
 from telegram import Update

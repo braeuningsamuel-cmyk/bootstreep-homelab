@@ -11,7 +11,10 @@ fi
 
 NAME="$1"
 echo "Starte $NAME neu..."
-if docker compose -f ~/docker/"$NAME"/compose.yml restart 2>/dev/null; then
+# Name-Mapping: nextcloud-aio → nextcloud (Ordnername)
+DIR_NAME="$NAME"
+[ "$NAME" = "nextcloud-aio" ] && DIR_NAME="nextcloud"
+if docker compose -f ~/docker/"$DIR_NAME"/compose.yml restart 2>/dev/null; then
     docker ps --filter "name=$NAME" --format "{{.Names}} {{.Status}}"
     exit 0
 elif docker restart "$NAME" 2>/dev/null; then

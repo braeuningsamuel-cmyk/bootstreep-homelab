@@ -1,4 +1,4 @@
-# Bootstreep Homelab – Alle Dienste (Merged) v3.11.0
+# Bootstreep Homelab – Alle Dienste (Merged) v3.11.2
 # Usage: docker compose -f docker-compose-all.yml up -d
 #
 # Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:
@@ -117,7 +117,7 @@ services:
     working_dir: /app
     volumes:
       - ~/hermes:/app
-    command: sh -c "npm install && npm run build && npm start"
+    command: sh -c "if [ ! -d node_modules ]; then npm install; fi; npm start"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 30s
@@ -320,7 +320,7 @@ services:
   # ─── CLOUD & SYNC ────────────────────────────────────────
   nextcloud-aio:
     <<: *common
-    cap_drop: []  # Docker Socket ben�tigt volle Caps
+    cap_drop: []  # Docker Socket ben�tigt volle Caps
     image: nextcloud/all-in-one:latest
     container_name: nextcloud-aio
     ports:
@@ -415,7 +415,7 @@ services:
 
   amp:
     <<: *common
-    cap_drop: []  # Docker Socket ben�tigt volle Caps
+    cap_drop: []  # Docker Socket ben�tigt volle Caps
     image: ghcr.io/cubecoders/amp:latest
     container_name: amp
     ports:

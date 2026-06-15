@@ -5,7 +5,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    # cap_drop: ALL nicht möglich - Nextcloud AIO benötigt Docker Socket für interne Verwaltung
+    cap_drop:
+      - ALL
     ports:
       - "8082:8080"
       - "9443:8443"

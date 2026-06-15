@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v3.11.0
+# Bootstreep Homelab Bootstrap v3.11.2
 # Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
 #
 # Usage:
@@ -89,7 +89,7 @@ dc_up_parallel() {
 # Logging sofort starten (auch für Pre-Flight)
 LOG_FILE="${HOME_DIR:-$HOME}/bootstrap.log"
 exec &> >(tee -a "$LOG_FILE")
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.11.0 gestartet"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.11.2 gestartet"
 
 info "Server-IP: $SERVER_IP"
 info "Zeitzone:  $TIMEZONE"
@@ -240,7 +240,7 @@ DJON
     log "Docker-Verzeichnisstruktur anlegen..."
     mkdir -p ~/docker
     for dir in dns tor websurfx ollama open-webui jellyfin sabnzbd n8n sonarr radarr prowlarr bazarr \
-               syncthing nextcloud uptime-kuma caddy hermes heimdall teamspeak amp; do
+               syncthing nextcloud uptime-kuma caddy hermes heimdall teamspeak amp amp-instances; do
         mkdir -p ~/docker/"$dir"
     done
 }
@@ -462,7 +462,7 @@ section_7_ai() {
             continue
         fi
         log "→ Pulling $model ..."
-        if docker exec ollama ollama pull "$model" 2>/dev/null; then
+        if timeout 600 docker exec ollama ollama pull "$model" 2>/dev/null; then
             log "✓ $model fertig."
         else
             warn "⚠️  $model pull fehlgeschlagen (wird später erneut versucht)"
@@ -603,7 +603,8 @@ EOSMB
 
     # AMP Game-Server-Instanzen (optional, standalone)
     log "AMP Game-Server-Instanzen kopieren (Minecraft + Valheim)..."
-    cp compose/amp-instances/*.yml ~/docker/amp-instances/ 2>/dev/null || true
+    mkdir -p ~/docker/amp-instances
+    cp compose/amp-instances/*.yml ~/docker/amp-instances/ 2>/dev/null || warn "Keine AMP-Instanz-YMLs gefunden"
     cp compose/amp-instances/README.md ~/docker/amp-instances/ 2>/dev/null || true
     log "? Game-Instanzen: docker compose -f ~/docker/amp-instances/minecraft.yml up -d"
     info "? Minecraft: Port 25565, Valheim: Port 2456-2458 (UDP)"
@@ -611,7 +612,10 @@ EOSMB
     # Caddy Reverse Proxy
     log "Caddy Reverse-Proxy starten..."
     cp compose/caddy.yml ~/docker/caddy/compose.yml
-    cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile 2>/dev/null || true
+    if [ ! -d ~/docker/caddy ]; then
+        mkdir -p ~/docker/caddy
+    fi
+    cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile
     sed -i "s/__SERVER_IP__/$SERVER_IP/g" ~/docker/caddy/Caddyfile 2>/dev/null || true
     sed -i "s/__USER__/$USER/g" ~/docker/caddy/Caddyfile 2>/dev/null || true
     dc_up caddy "Caddy"
@@ -738,7 +742,12 @@ section_14_dashboard() {
         log "Dashboard bereits vorhanden – aktualisiere..."
         cd ~/bootstreep-dashboard && git pull
     else
-        git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-dashboard.git ~/bootstreep-dashboard
+        REPO_URL="https://github.com/YOUR_GITHUB_USERNAME/bootstreep-dashboard.git"
+        if [[ "$REPO_URL" == *YOUR_GITHUB_USERNAME* ]]; then
+            warn "⚠️  Platzhalter YOUR_GITHUB_USERNAME nicht ersetzt – Clone wird fehlschlagen!"
+            warn "   Bearbeite bootstrap.sh Zeile 741 und ersetze den Platzhalter."
+        fi
+        git clone "$REPO_URL" ~/bootstreep-dashboard
     fi
 
     log "Caddy-Route für Dashboard konfigurieren..."
@@ -793,7 +802,7 @@ main() {
 
     echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║     Bootstreep Homelab Bootstrap v3.11.0            ║"
+echo "║     Bootstreep Homelab Bootstrap v3.11.2            ║"
 echo "╚══════════════════════════════════════════════════╝"
     echo ""
 

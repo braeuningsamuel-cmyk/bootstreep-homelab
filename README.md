@@ -24,7 +24,8 @@ Dieses Repository enthält ein vollständiges Bootstrap-Script für einen Ubuntu
 | **Monitoring** | Uptime Kuma |
 | **Voice** | TeamSpeak3 |
 | **Game-Server** | AMP (Minecraft, Valheim uvm.) |
-| **Game-Instanzen (optional)** | Minecraft + Valheim (als AMP-Alternative) |`n| **Reverse Proxy** | Caddy (Auto-HTTPS) |
+| **Game-Instanzen (optional)** | Minecraft + Valheim (als AMP-Alternative) |
+| **Reverse Proxy** | Caddy (Auto-HTTPS) |
 | **VPN** | WireGuard via PiVPN oder Tailscale |
 | **Netzwerkfreigabe** | Samba |
 | **📱 KI-Agent** | Telegram Bot mit Server-Steuerung, Daily Briefing, E-Mail, Kalender |
@@ -171,7 +172,7 @@ Der Bot kann dir jeden Morgen eine Zusammenfassung senden mit:
 Im Systemd-Service mit `--briefing` Flag:
 
 ```bash
-0 7 * * * /usr/bin/python3 ~/ai-agent/daily.py --send-telegram
+0 7 * * * /usr/bin/python3 ~/ai-agent/daily.py --telegram
 ```
 
 ### Integration mit GenSpark Claw & anderen AI Agents
@@ -299,7 +300,7 @@ MIT – siehe [LICENSE](LICENSE).
 
 ---
 
-*Bootstreep Homelab v3.11.0*
+*Bootstreep Homelab v3.11.2*
 
 
 
