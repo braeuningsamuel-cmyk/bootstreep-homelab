@@ -6,7 +6,7 @@ We take the security of Bootstreep Homelab seriously. If you discover a security
 
 **Do not** open a public issue for security vulnerabilities.
 
-Instead, send a description to the repository maintainer via GitHub Issues with the label `security`.
+Instead, use GitHub's private Security Advisory feature: https://github.com/braeuningsamuel-cmyk/bootstreep-homelab/security/advisories
 
 We will acknowledge receipt within 48 hours and provide a timeline for the fix.
 

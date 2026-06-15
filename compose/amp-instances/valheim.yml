@@ -14,7 +14,7 @@ services:
       - SERVER_NAME=Bootstreep Valheim
       - SERVER_PORT=2456
       - WORLD_NAME=Dedicated
-      - SERVER_PASS=changeme
+      - SERVER_PASS=${SERVER_PASS:-changeme}
       - TZ=Europe/Berlin
       - PUBLIC=1
     security_opt:

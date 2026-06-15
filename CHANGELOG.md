@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.11.4 (2026-06-15) – Security & CI Hardening
+
+### Security (CRITICAL)
+- **bootstrap.sh**: `curl | sudo sh` → Download + lokale Ausführung (Checksum-Hinweis)
+- **bootstrap.sh**: `read`-Prompt prüft auf TTY (nicht-interaktiver Modus via Cloud-Init)
+- **cloud-init-flow.md**: NONINTERACTIVE=true für Headless-Betrieb dokumentiert
+
+### Security (HIGH)
+- **SECURITY.md**: GitHub Security Advisory statt öffentlichem Issue
+- **server_commands.py**: `StrictHostKeyChecking=no` → `accept-new`
+- **bootstrap.sh**: Pi-hole Default-Passwort-Warning bei `admin`
+- **compose/amp-instances/minecraft.yml**: RCON_PASSWORD → `${RCON_PASSWORD:-changeme}`
+- **compose/amp-instances/valheim.yml**: SERVER_PASS → `${SERVER_PASS:-changeme}`
+- **compose/nextcloud.yml**: `cap_drop: ALL` → `cap_drop: []` (Docker Socket benötigt Caps)
+
+### CI
+- **ci.yml**: shellcheck @master → @3.0.0 (pinned), Python lint (ruff) hinzugefügt
+- **dependabot.yml**: Docker-Ökosystem für `/compose` + pip für `ai-agent` hinzugefügt
+
+### Fixes
+- **update-all.sh**: `cd ~/docker` Existenzprüfung vor Directory-Wechsel
+
 ## v3.11.2 (2026-06-15) – Docker-Images stabilisiert
 
 ### Fixes (CRITICAL)

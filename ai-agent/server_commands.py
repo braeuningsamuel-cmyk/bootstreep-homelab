@@ -21,7 +21,7 @@ def ssh_run(cmd: str, timeout: int = 30) -> str:
     """Führt einen Befehl per SSH auf dem Homelab-Server aus."""
     ssh_cmd = [
         'ssh', '-i', SSH_KEY_PATH,
-        '-o', 'StrictHostKeyChecking=no',
+        '-o', 'StrictHostKeyChecking=accept-new',
         '-o', 'ConnectTimeout=5',
         f'{SSH_USER}@{SERVER_IP}',
         cmd

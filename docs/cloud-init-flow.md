@@ -24,7 +24,7 @@ users:
 
 runcmd:
   - git clone https://github.com/...
-  - cd /opt/bootstreep-homelab && ./bootstrap.sh
+  - cd /opt/bootstreep-homelab && NONINTERACTIVE=true ./bootstrap.sh
 ```
 
 ### 2. ISO erstellen (für manuelle Installation)
@@ -76,7 +76,7 @@ virt-install --name homelab --memory 32768 --vcpus 8 \
 3. cloud-init liest user-data von CD-ROM
 4. Benutzer wird angelegt, SSH-Key hinterlegt
 5. Repository wird geklont
-6. bootstrap.sh wird ausgeführt
+6. bootstrap.sh wird ausgeführt (mit NONINTERACTIVE=true für Headless-Betrieb)
 7. Nach ~30–60 Min: Homelab fertig eingerichtet
 ```
 

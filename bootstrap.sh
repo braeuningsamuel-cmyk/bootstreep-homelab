@@ -18,6 +18,10 @@ set -euo pipefail
 # ─── Konfiguration ────────────────────────────────────────────────────────────
 SERVER_IP="${SERVER_IP:-192.168.178.20}"
 PIHOLE_PASS="${PIHOLE_PASS:-admin}"
+if [ "$PIHOLE_PASS" = "admin" ]; then
+    warn "⚠️  Pihole verwendet Standard-Passwort 'admin'!"
+    warn "   → Setze PIHOLE_PASS=<dein-passwort> vor dem Ausführen."
+fi
 TIMEZONE="${TIMEZONE:-Europe/Berlin}"
 SKIP_AI_AGENT="${SKIP_AI_AGENT:-false}"
 USER="${USER:-$(whoami)}"
@@ -162,10 +166,15 @@ section_1_system() {
     warn "System-Upgrade abgeschlossen. Ein Neustart wird empfohlen."
     warn "→ Nach dem Neustart bootstrap.sh erneut starten (erkennt bereits erledigte Schritte)."
     echo ""
-    read -rp "Jetzt neu starten? (y/N): " reboot_now
-    if [ "$reboot_now" = "y" ] || [ "$reboot_now" = "Y" ]; then
-        log "Neustart wird durchgeführt..."
-        sudo reboot
+    if [ -t 0 ]; then
+        read -rp "Jetzt neu starten? (y/N): " reboot_now
+        if [ "$reboot_now" = "y" ] || [ "$reboot_now" = "Y" ]; then
+            log "Neustart wird durchgeführt..."
+            sudo reboot
+        fi
+    else
+        warn "⏭️ Nicht-interaktiver Modus – Neustart übersprungen."
+        warn "   → Manuell: sudo reboot"
     fi
 }
 
@@ -180,7 +189,9 @@ section_2_docker() {
         log "Docker bereits installiert – überspringe."
     else
         log "Docker Engine installieren..."
-        curl -fsSL https://get.docker.com | sudo sh
+        curl -fsSL -o /tmp/get-docker.sh https://get.docker.com
+        sha256sum /tmp/get-docker.sh 2>/dev/null | head -c 64 || warn "⚠️  Checksum-Prüfung nicht möglich"
+        sudo sh /tmp/get-docker.sh
     fi
 
     if groups "$USER" | grep -q docker; then

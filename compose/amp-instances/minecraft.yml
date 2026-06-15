@@ -14,7 +14,7 @@ services:
       - MAX_PLAYERS=10
       - MOTD=Bootstreep Minecraft Server
       - ENABLE_RCON=true
-      - RCON_PASSWORD=changeme
+      - RCON_PASSWORD=${RCON_PASSWORD:-changeme}
       - SEED=-215237419
     security_opt:
       - no-new-privileges:true

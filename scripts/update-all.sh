@@ -15,6 +15,7 @@ info() { echo -e "${CYAN}[i]${NC} $1"; }
 info "=== System-Updates ===" && sudo apt update && sudo apt upgrade -y
 
 info "=== Docker-Container updaten ==="
+[ -d ~/docker ] || { warn "~/docker existiert nicht – bootstrap ausführen?"; exit 1; }
 cd ~/docker
 for d in */; do
     if [ -f "$d/compose.yml" ]; then
