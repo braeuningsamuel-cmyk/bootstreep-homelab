@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: n8nio/n8n
+    image: n8nio/n8n:1.126.7
     container_name: n8n
     restart: unless-stopped
     security_opt:
@@ -39,4 +39,5 @@ volumes:
 networks:
   homelab:
     external: true
+
 

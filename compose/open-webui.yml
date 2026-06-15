@@ -1,6 +1,6 @@
 services:
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.9.6:main
     container_name: open-webui
     restart: unless-stopped
     security_opt:
@@ -36,4 +36,5 @@ volumes:
 networks:
   homelab:
     external: true
+
 

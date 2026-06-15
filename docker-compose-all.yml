@@ -61,7 +61,7 @@ services:
   # ─── KI-WORKFLOWS ────────────────────────────────────────
   n8n:
     <<: *common
-    image: n8nio/n8n
+    image: n8nio/n8n:1.126.7
     container_name: n8n
     ports:
       - "5678:5678"
@@ -90,7 +90,7 @@ services:
   # ─── KI-CHAT-UI ──────────────────────────────────────────
   open-webui:
     <<: *common
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.9.6
     container_name: open-webui
     ports:
       - "3002:8080"
@@ -110,7 +110,7 @@ services:
 
   hermes:
     <<: *common
-    image: node:20-alpine
+    image: node:22-alpine
     container_name: hermes
     ports:
       - "3000:3000"
@@ -359,7 +359,7 @@ services:
   # ─── MONITORING ──────────────────────────────────────────
   uptime-kuma:
     <<: *common
-    image: louislam/uptime-kuma:latest
+    image: louislam/uptime-kuma:2
     container_name: uptime-kuma
     ports:
       - "3001:3001"
@@ -488,6 +488,9 @@ volumes:
 networks:
   homelab:
     external: true
+
+
+
 
 
 

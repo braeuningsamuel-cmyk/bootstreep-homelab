@@ -1,6 +1,6 @@
 services:
   uptime-kuma:
-    image: louislam/uptime-kuma:latest
+    image: louislam/uptime-kuma:2:latest
     container_name: uptime-kuma
     restart: unless-stopped
     security_opt:
@@ -31,4 +31,5 @@ volumes:
 networks:
   homelab:
     external: true
+
 
