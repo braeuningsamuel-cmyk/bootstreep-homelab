@@ -1,4 +1,4 @@
 python-telegram-bot>=21.0
 python-dotenv>=1.0
 requests>=2.31
-aiohttp>=3.9
+aiohttp>=3.14.1
