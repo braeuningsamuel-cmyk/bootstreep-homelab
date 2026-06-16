@@ -603,7 +603,7 @@ EOSMB
     # TeamSpeak Sprachserver
     log "TeamSpeak-Server starten..."
     cp compose/teamspeak.yml ~/docker/teamspeak/compose.yml
-    dc_up teamspeak "TeamSpeak3"
+    dc_up teamspeak "TeamSpeak6"
 
     # AMP Game Server Manager
     log "AMP Game-Server-Manager starten..."

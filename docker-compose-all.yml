@@ -396,7 +396,7 @@ services:
   # ─── GAMESERVER ───────────────────────────────────────────
   teamspeak:
     <<: *common
-    image: teamspeak:latest
+    image: teamspeak/teamspeak:latest
     container_name: teamspeak
     ports:
       - "9987:9987/udp"
@@ -405,7 +405,7 @@ services:
     volumes:
       - teamspeak_data:/var/ts3server
     environment:
-      - TS3SERVER_LICENSE=accept
+      - TS6SERVER_LICENSE=accept
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "10011"]
       interval: 30s

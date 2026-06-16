@@ -210,7 +210,7 @@ bootstreep-homelab/
 │   ├── nextcloud.yml         # Cloud
 │   ├── uptime-kuma.yml       # Monitoring
 │   ├── heimdall.yml          # Dashboard
-│   ├── teamspeak.yml         # Sprachserver (Port 9987)
+│   ├── teamspeak.yml         # TeamSpeak6 Sprachserver (Port 9987)
 │   ├── amp.yml               # Game-Server-Manager (Port 8087)
 │   └── caddy.yml             # Reverse Proxy
 ├── cloud-init/               # Automatische Provisionierung
