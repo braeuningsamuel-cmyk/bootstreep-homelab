@@ -1,0 +1,49 @@
+---
+# Vaultwarden – Passwort-Manager (Bitwarden-kompatibel, Privacy)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
+services:
+  vaultwarden:
+    <<: *common
+    image: vaultwarden/server:1.31.0
+    container_name: vaultwarden
+    ports:
+      - "8093:80"
+      - "8444:3012"
+    environment:
+      - DISABLE_TELEMETRY=true
+      - SIGNUPS_ALLOWED=${VAULTWARDEN_SIGNUPS:-true}
+      - INVITATIONS_ALLOWED=false
+      - SHOW_PASSWORD_HINT=false
+      - DOMAIN=${VAULTWARDEN_DOMAIN:-https://vault.example.com}
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SSL=true
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - ROCKET_PORT=80
+      - ROCKET_ADDRESS=0.0.0.0
+    volumes:
+      - vaultwarden_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/alive"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}
+
+volumes:
+  vaultwarden_data:
+
+networks:
+  homelab:
+    external: true

@@ -1,11 +1,18 @@
+---
+# Nextcloud AIO – Self-hosted Cloud (Privacy: deine Daten, dein Server)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   nextcloud-aio:
+    <<: *common
+    cap_drop: []
     image: nextcloud/all-in-one:latest
     container_name: nextcloud-aio
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: []  # Docker Socket benötigt volle Caps
     ports:
       - "8082:8080"
       - "9443:8443"
@@ -14,19 +21,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
+      interval: 60s
       timeout: 15s
       retries: 5
-      start_period: 60s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 networks:
   homelab:
     external: true
-

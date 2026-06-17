@@ -1,3 +1,4 @@
+---
 extends: default
 
 rules:
@@ -13,3 +14,5 @@ rules:
   document-start: disable
   truthy:
     level: warning
+    check-keys: false
+  comments-indentation: disable

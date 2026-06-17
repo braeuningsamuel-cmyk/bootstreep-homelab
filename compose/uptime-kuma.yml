@@ -1,29 +1,26 @@
+---
+# Uptime Kuma – Monitoring
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   uptime-kuma:
-    image: louislam/uptime-kuma:2
+    <<: *common
+    image: louislam/uptime-kuma:1
     container_name: uptime-kuma
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "3001:3001"
     volumes:
       - uptime_kuma_data:/app/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   uptime_kuma_data:
@@ -31,5 +28,3 @@ volumes:
 networks:
   homelab:
     external: true
-
-

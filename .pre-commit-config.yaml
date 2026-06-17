@@ -1,20 +1,26 @@
+---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: [--allow-multiple-documents]
       - id: check-json
       - id: check-added-large-files
+        args: [--maxkb=1024]
       - id: check-merge-conflict
+      - id: check-case-conflict
       - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:
       - id: shellcheck
-        args: [--severity=warning]
+        args: [--severity=warning, --shell=bash]
 
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.35.1
@@ -23,7 +29,19 @@ repos:
         args: [-c, .yamllint.yaml]
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.41.0
+    rev: v0.42.0
     hooks:
       - id: markdownlint
+        args: [--fix, --disable, MD013, MD033, MD041]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
         args: [--fix]
+      - id: ruff-format

@@ -1,25 +1,25 @@
 #!/bin/bash
-# Bootstreep Homelab – Logs anzeigen
-# Usage: ./logs.sh <container-name> [-f]
+# Container-Logs anzeigen
 set -euo pipefail
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <container-name> [-f]"
-    echo "Beispiele: pihole, unbound, jellyfin, ollama"
-    echo "  -f  = folgen (wie tail -f)"
-    exit 1
-fi
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib.sh"
 
-FOLLOW=""
-NAME="$1"
+usage() {
+    cat <<EOF
+Usage: $0 <container> [docker-logs-flags...]
+
+Beispiele:
+  $0 pihole
+  $0 jellyfin --tail 50
+  $0 ollama -f
+EOF
+    exit 1
+}
+
+[ $# -eq 0 ] && usage
+
+container="$1"
 shift
-if [ "${1:-}" = "-f" ]; then
-    FOLLOW="-f"
-fi
 
-if docker logs $FOLLOW "$NAME" 2>&1; then
-    exit 0
-else
-    echo "Container $NAME nicht gefunden"
-    exit 1
-fi
+dc_for_container logs "$container" "$@"

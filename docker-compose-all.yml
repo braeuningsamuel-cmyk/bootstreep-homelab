@@ -1,21 +1,18 @@
-# Bootstreep Homelab – Alle Dienste (Merged) v3.11.2
-# Usage: docker compose -f docker-compose-all.yml up -d
-#
-# Hinweis: Einige Dienste benötigen zusätzliche Konfiguration:
-# - Ollama: volumes Pfad anpassen
-# - Nextcloud: /opt/nextcloud-data muss existieren
-# - Websurfx: muss vorher gebaut werden (docker build)
-# - Hermes: muss vorher geklont sein
+---
+# Bootstreep Homelab – Alle Dienste (Merged) v3.13.0
+# Privacy-First • Local KI • Hardened
 
 x-common: &common
   restart: unless-stopped
-  security_opt: ["no-new-privileges:true"]
-  cap_drop: [ALL]
+  security_opt:
+    - "no-new-privileges:true"
+  cap_drop:
+    - ALL
   networks:
     - homelab
 
 services:
-  # ─── DNS ────────────────────────────────────────────────
+  # ─── DNS (Pi-hole + Unbound mit DoH) ─────────────────────────────────
   unbound:
     <<: *common
     image: mvance/unbound:latest
@@ -25,88 +22,94 @@ services:
       - "127.0.0.1:5335:53/tcp"
     volumes:
       - ./unbound.conf:/opt/unbound/unbound.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "drill -Q google.com @127.0.0.1 || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}
 
   pihole:
     <<: *common
-    image: pihole/pihole:latest
+    image: pihole/pihole:2024.07.0
     container_name: pihole
     ports:
       - "53:53/udp"
       - "53:53/tcp"
       - "8081:80/tcp"
+      - "8443:443/tcp"
     environment:
-      TZ: ${TIMEZONE:-Europe/Berlin}
-      WEBPASSWORD: "${PIHOLE_PASS:-admin}"
+      TZ: "${TIMEZONE:-Europe/Berlin}"
+      WEBPASSWORD: "${PIHOLE_PASS:?PIHOLE_PASS erforderlich}"
       PIHOLE_DNS_: "127.0.0.1#5335"
       DNSSEC: "true"
+      PIHOLE_TELEMETRY: "false"
+      PIHOLE_DHCP_ACTIVE: "false"
+      PIHOLE_DOMAIN: "lan"
+      IPv6: "false"
     volumes:
       - pihole_etc:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
+    cap_add: [NET_ADMIN]
+    depends_on:
+      unbound: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "sh", "-c", "dig +short google.com @127.0.0.1 || exit 1"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 15s
-    cap_add:
-      - NET_ADMIN
-    depends_on:
-      - unbound
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      options: {max-size: "10m", max-file: "3"}
 
-  # ─── KI-WORKFLOWS ────────────────────────────────────────
-  n8n:
+  # ─── KI ──────────────────────────────────────────────────────────────
+  ollama:
     <<: *common
-    image: n8nio/n8n:1.126.7
-    container_name: n8n
+    image: ollama/ollama:0.3.12
+    container_name: ollama
     ports:
-      - "5678:5678"
+      - "127.0.0.1:11434:11434"
     volumes:
-      - n8n_data:/home/node/.n8n
+      - ollama_data:/root/.ollama
     environment:
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - N8N_HOST=localhost
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=127.0.0.1
+      - OLLAMA_NUM_PARALLEL=4
+      - OLLAMA_MAX_LOADED_MODELS=2
     deploy:
       resources:
-        limits:
-          memory: 1g
+        limits: {memory: 14g, cpus: "8"}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      options: {max-size: "50m", max-file: "3"}
 
-  # ─── KI-CHAT-UI ──────────────────────────────────────────
   open-webui:
     <<: *common
-    image: ghcr.io/open-webui/open-webui:v0.9.6
+    image: ghcr.io/open-webui/open-webui:v0.3.32
     container_name: open-webui
     ports:
       - "3002:8080"
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
+      - DO_NOT_TRACK=true
+      - ENABLE_TELEMETRY=false
+      - SCARF_NO_ANALYTICS=true
+      - WEBUI_SECRET_KEY=${OPEN_WEBUI_SECRET:-}
+      - WEBUI_AUTH=true
     volumes:
       - open_webui_data:/app/backend/data
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
     depends_on:
-      ollama:
-        condition: service_healthy
+      ollama: {condition: service_healthy}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
   hermes:
     <<: *common
@@ -118,29 +121,26 @@ services:
     volumes:
       - ~/hermes:/app
     command: sh -c "if [ ! -d node_modules ]; then npm install; fi; npm start"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
     depends_on:
-      ollama:
-        condition: service_healthy
+      ollama: {condition: service_healthy}
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}
 
-  # ─── PRIVATSPHÄRE ────────────────────────────────────────
+  # ─── PRIVATSPHÄRE ────────────────────────────────────────────────────
   tor:
     <<: *common
     image: peterdavehello/tor-socks-proxy:latest
     container_name: tor
     ports:
       - "127.0.0.1:9050:9150"
+    read_only: true
+    tmpfs: ["/tmp"]
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9150"]
-      interval: 30s
+      interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 20s
 
   websurfx:
     <<: *common
@@ -148,46 +148,33 @@ services:
     container_name: websurfx
     ports:
       - "8080:8080"
+    depends_on:
+      tor: {condition: service_healthy}
+
+  # ─── MEDIEN ──────────────────────────────────────────────────────────
+  jellyfin:
+    <<: *common
+    image: jellyfin/jellyfin:10.9.7
+    container_name: jellyfin
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin_config:/config
+      - ~/media:/media:ro
+    devices:
+      - "/dev/dri:/dev/dri"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 15s
-    depends_on:
-      tor:
-        condition: service_healthy
-
-  # ─── KI ──────────────────────────────────────────────────
-  ollama:
-    <<: *common
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "127.0.0.1:11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
     deploy:
       resources:
-        limits:
-          memory: 14g
-          cpus: "8"
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
+        limits: {memory: 4g, cpus: "4"}
 
-  # ─── DOWNLOAD-CLIENT ─────────────────────────────────────
   sabnzbd:
     <<: *common
-    image: lscr.io/linuxserver/sabnzbd:latest
+    image: lscr.io/linuxserver/sabnzbd:4.3.2
     container_name: sabnzbd
     ports:
       - "8085:8080"
@@ -199,45 +186,10 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-  # ─── MEDIEN ──────────────────────────────────────────────
-  jellyfin:
-    <<: *common
-    image: jellyfin/jellyfin:latest
-    container_name: jellyfin
-    ports:
-      - "8096:8096"
-    volumes:
-      - jellyfin_config:/config
-      - ~/media:/media:ro
-    devices:
-      - "/dev/dri:/dev/dri"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 4g
-          cpus: "4"
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "3"
 
   sonarr:
     <<: *common
-    image: lscr.io/linuxserver/sonarr:latest
+    image: lscr.io/linuxserver/sonarr:4.0.9
     container_name: sonarr
     ports:
       - "8989:8989"
@@ -249,16 +201,10 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8989/api/v3/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
   radarr:
     <<: *common
-    image: lscr.io/linuxserver/radarr:latest
+    image: lscr.io/linuxserver/radarr:5.10.3
     container_name: radarr
     ports:
       - "7878:7878"
@@ -270,16 +216,10 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7878/api/v3/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
   prowlarr:
     <<: *common
-    image: lscr.io/linuxserver/prowlarr:latest
+    image: lscr.io/linuxserver/prowlarr:1.21.2
     container_name: prowlarr
     ports:
       - "9696:9696"
@@ -289,16 +229,10 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9696/api/v1/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
   bazarr:
     <<: *common
-    image: lscr.io/linuxserver/bazarr:latest
+    image: lscr.io/linuxserver/bazarr:1.5.1
     container_name: bazarr
     ports:
       - "6767:6767"
@@ -310,17 +244,11 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6767"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
-  # ─── CLOUD & SYNC ────────────────────────────────────────
+  # ─── CLOUD & SYNC ────────────────────────────────────────────────────
   nextcloud-aio:
     <<: *common
-    cap_drop: []  # Docker Socket ben�tigt volle Caps
+    cap_drop: []  # Docker Socket ben�tigt Capabilities
     image: nextcloud/all-in-one:latest
     container_name: nextcloud-aio
     ports:
@@ -331,51 +259,51 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
+      interval: 60s
       timeout: 15s
       retries: 5
-      start_period: 60s
 
   syncthing:
     <<: *common
-    image: syncthing/syncthing:latest
+    image: syncthing/syncthing:1.27.7
     container_name: syncthing
     ports:
       - "8384:8384"
-      - "22000:22000"
+      - "22000:22000/tcp"
       - "21027:21027/udp"
     volumes:
       - syncthing_data:/var/syncthing
       - ~/vault:/var/syncthing/vault
     environment:
       - STGUIADDRESS=0.0.0.0:8384
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8384/rest/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
-  # ─── MONITORING ──────────────────────────────────────────
+  # ─── WORKFLOWS & MONITORING ──────────────────────────────────────────
+  n8n:
+    <<: *common
+    image: n8nio/n8n:1.126.7
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PROTOCOL=http
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+
   uptime-kuma:
     <<: *common
-    image: louislam/uptime-kuma:2
+    image: louislam/uptime-kuma:1
     container_name: uptime-kuma
     ports:
       - "3001:3001"
     volumes:
       - uptime_kuma_data:/app/data
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
-  # ─── DASHBOARD ────────────────────────────────────────────
   heimdall:
     <<: *common
-    image: lscr.io/linuxserver/heimdall:latest
+    image: lscr.io/linuxserver/heimdall:2.5.9
     container_name: heimdall
     ports:
       - "8090:80"
@@ -386,17 +314,11 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
-  # ─── GAMESERVER ───────────────────────────────────────────
+  # ─── GAMESERVER ──────────────────────────────────────────────────────
   teamspeak:
     <<: *common
-    image: teamspeak/teamspeak:latest
+    image: teamspeak/teamspeak:3.13.7
     container_name: teamspeak
     ports:
       - "9987:9987/udp"
@@ -405,18 +327,12 @@ services:
     volumes:
       - teamspeak_data:/var/ts3server
     environment:
-      - TS6SERVER_LICENSE=accept
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "10011"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - TS3SERVER_LICENSE=accept
 
   amp:
     <<: *common
-    cap_drop: []  # Docker Socket ben�tigt volle Caps
-    image: ghcr.io/cubecoders/amp:latest
+    cap_drop: []  # Docker Socket ben�tigt Capabilities
+    image: ghcr.io/cubecoders/amp:2.5.1.6
     container_name: amp
     ports:
       - "8087:8080"
@@ -427,45 +343,68 @@ services:
     environment:
       - AMP_UID=1000
       - AMP_GID=1000
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
 
-  # ─── REVERSE PROXY ───────────────────────────────────────
+  # ─── WATCHTOWER & VAULTWARDEN ────────────────────────────────────────
+  watchtower:
+    <<: *common
+    image: containrrr/watchtower:1.7.3
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400
+      - WATCHTOWER_SCHEDULE=0 0 4 ? * SUN
+      - WATCHTOWER_DISABLE_ANALYTICS=true
+      - WATCHTOWER_TIMEOUT=60s
+      - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
+
+  vaultwarden:
+    <<: *common
+    image: vaultwarden/server:1.31.0
+    container_name: vaultwarden
+    ports:
+      - "8093:80"
+      - "8444:3012"
+    environment:
+      - DISABLE_TELEMETRY=true
+      - SIGNUPS_ALLOWED=${VAULTWARDEN_SIGNUPS:-true}
+      - INVITATIONS_ALLOWED=false
+      - SHOW_PASSWORD_HINT=false
+      - DOMAIN=${VAULTWARDEN_DOMAIN:-https://vault.example.com}
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN:-}
+      - ROCKET_PORT=80
+      - ROCKET_ADDRESS=0.0.0.0
+    volumes:
+      - vaultwarden_data:/data
+
+  # ─── REVERSE PROXY ───────────────────────────────────────────────────
   caddy:
     <<: *common
-    image: caddy:latest
+    image: caddy:2.8-alpine
     container_name: caddy
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    cap_add: [NET_BIND_SERVICE]
     deploy:
       resources:
-        limits:
-          memory: 256m
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+        limits: {memory: 256m}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 
 volumes:
   pihole_etc:
   pihole_dnsmasq:
   ollama_data:
+  open_webui_data:
   jellyfin_config:
   sabnzbd_config:
   sonarr_config:
@@ -473,26 +412,15 @@ volumes:
   prowlarr_config:
   bazarr_config:
   n8n_data:
-  minecraft_data:
-  valheim_data:
-  valheim_config:
-  open_webui_data:
   syncthing_data:
   uptime_kuma_data:
   heimdall_config:
   teamspeak_data:
   amp_data:
+  vaultwarden_data:
   caddy_data:
   caddy_config:
 
 networks:
   homelab:
     external: true
-
-
-
-
-
-
-
-

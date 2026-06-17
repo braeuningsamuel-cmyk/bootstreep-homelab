@@ -2,25 +2,42 @@
 
 ## Reporting a Vulnerability
 
-We take the security of Bootstreep Homelab seriously. If you discover a security vulnerability, please report it responsibly.
+**Do not** open public issues for security vulnerabilities.
 
-**Do not** open a public issue for security vulnerabilities.
+Use GitHub's Security Advisory feature:
+https://github.com/braeuningsamuel-cmyk/bootstreep-homelab/security/advisories
 
-Instead, use GitHub's private Security Advisory feature: https://github.com/braeuningsamuel-cmyk/bootstreep-homelab/security/advisories
-
-We will acknowledge receipt within 48 hours and provide a timeline for the fix.
+We will acknowledge within 48 hours and provide a fix timeline.
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 3.x     | :white_check_mark: |
-| < 3.0   | :x:                |
+| Version | Supported |
+|---------|-----------|
+| 3.13.x  | ✅ Yes |
+| 3.11.x  | ⚠️ Critical fixes only |
+| < 3.11  | ❌ No |
 
-## Best Practices for Users
+## Best Practices
 
-- Run the bootstrap only on trusted networks
-- Change default passwords (Pi-hole: admin, etc.)
-- Enable 2FA on GitHub account
-- Keep your system updated: sudo apt update && sudo apt upgrade
-- Regularly backup Docker volumes: bash ~/scripts/backup-all.sh
+- ✅ SSH-Key-Authentifizierung (nie Passwort)
+- ✅ Pi-hole Passwort: min. 12 Zeichen, generiert via `openssl rand -base64 16`
+- ✅ 2FA auf GitHub
+- ✅ `pre-commit install` für Secret-Scanning (gitleaks)
+- ✅ Regelmäßige Backups: `~/scripts/backup-all.sh`
+- ✅ Updates: `~/scripts/update-all.sh` (Sonntag 3:00)
+- ✅ Fail2Ban aktiv: `sudo fail2ban-client status sshd`
+- ✅ UFW aktiv: `sudo ufw status`
+- ✅ Kernel gehärtet: sysctl (BBR, rp_filter, syncookies, martians)
+
+## Built-in Hardening (v3.13.0)
+
+- **SSH**: Nur Ed25519, starke Ciphers/MACs/Kex, keine Passwörter, RekeyLimit
+- **UFW**: Nur LAN-Zugriff auf Web-Interfaces, Rate-Limiting
+- **Fail2Ban**: 3 Versuche → 1h Ban (Recidive: 1 Woche)
+- **Docker**: `no-new-privileges`, `cap_drop: ALL`, Logging rotiert, userland-proxy: false
+- **AppArmor**: aktiviert + auditd
+- **Seccomp**: Default Docker Seccomp-Profil aktiv
+- **Privacy**: IPv6 aus, DoH zu Cloudflare/Quad9, Telemetrie deaktiviert
+- **Kernel**: rp_filter=1, syncookies=1, martians logged, ICMP Broadcast ignore
+- **TCP**: BBR Congestion Control, FastOpen, große Puffer
+- **Logs**: Regelmäßige IP-Anonymisierung via sanitize-logs.sh

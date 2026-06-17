@@ -1,32 +1,30 @@
+---
+# Websurfx – Privacy Meta-Search (nutzt Tor als Upstream)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   websurfx:
+    <<: *common
     image: websurfx:local
     container_name: websurfx
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "8080:8080"
+    depends_on:
+      tor: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 15s
-    depends_on:
-      tor:
-        condition: service_healthy
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "5m", max-file: "3"}
 
 networks:
   homelab:
     external: true
-

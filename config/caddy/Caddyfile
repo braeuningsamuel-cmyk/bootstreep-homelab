@@ -1,28 +1,51 @@
-(security_headers) {
-    header {
-        Strict-Transport-Security "max-age=63072000"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "no-referrer"
-    }
+# Caddyfile – Bootstreep Homelab v3.13.0
+# Security Headers, HSTS, CSP aktiviert
+
+{
+    admin off
+    auto_https off
+    email {$LETSENCRYPT_EMAIL:admin@example.com}
 }
 
+# ─── LAN (HTTP) ─────────────────────────────────────────────────────────
 http://__SERVER_IP__:80 {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+        Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+        -Server
+        -X-Powered-By
+    }
+
+    # Gzip/Brotli Compression
+    encode gzip
+
+    # Cache static assets
+    header /static/* Cache-Control "public, max-age=86400"
+    header /assets/* Cache-Control "public, max-age=86400"
+
     root * /home/__USER__/bootstreep-dashboard/src
     file_server
+
+    reverse_proxy /pihole/* pihole:80
+    reverse_proxy /nextcloud/* nextcloud-aio:11000
+    reverse_proxy /jellyfin/* jellyfin:8096
+    reverse_proxy /sonarr/* sonarr:8989
+    reverse_proxy /radarr/* radarr:7878
+    reverse_proxy /prowlarr/* prowlarr:9696
+    reverse_proxy /bazarr/* bazarr:6767
+    reverse_proxy /sabnzbd/* sabnzbd:8080
+    reverse_proxy /n8n/* n8n:5678
+    reverse_proxy /kuma/* uptime-kuma:3001
+    reverse_proxy /webui/* open-webui:8080
+    reverse_proxy /hermes/* hermes:3000
+    reverse_proxy /vault/* vaultwarden:80
+    reverse_proxy /syncthing/* syncthing:8384
+    reverse_proxy /amp/* amp:8080
+    reverse_proxy /ollama/* ollama:11434
 }
 
-cloud.deine-domain.de {
-    import security_headers
-    reverse_proxy nextcloud-aio:8080
-}
-
-media.deine-domain.de {
-    import security_headers
-    reverse_proxy jellyfin:8096
-}
-
-amp.__SERVER_IP__.sslip.io {
-    import security_headers
-    reverse_proxy amp:8080
-}
+# ─── HTTPS (für externe Domains) ───────────────────────────────────────

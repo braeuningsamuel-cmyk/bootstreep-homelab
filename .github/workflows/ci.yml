@@ -1,9 +1,9 @@
-# Bootstreep Homelab CI
+---
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
@@ -14,41 +14,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@3.0.0
+        uses: ludeeus/action-shellcheck@2.0.0
         with:
-          scandir: '.'
-          severity: warning
+          scandir: ./
+          additional_files: bootstrap.sh scripts/*.sh
 
   yamllint:
-    name: YAML Lint
+    name: yamllint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Run yamllint
-        uses: ibiqlik/action-yamllint@v3
-        with:
-          config_file: .yamllint.yaml
+        run: |
+          pip install yamllint==1.35.1
+          yamllint -c .yamllint.yaml compose/ docker-compose-all.yml .github/workflows/
 
-  markdownlint:
-    name: Markdown Lint
+  python-lint:
+    name: Python (ruff)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v16
-        with:
-          globs: '**/*.md'
-
-  python:
-    name: Python Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install lint tools
+      - name: Install ruff
         run: pip install ruff
       - name: Run ruff
-        run: ruff check ai-agent/
+        run: |
+          ruff check ai-agent/
+          ruff format --check ai-agent/
+
+  gitleaks:
+    name: Secret-Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  markdown-lint:
+    name: Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v17
+        with:
+          globs: '**/*.md'

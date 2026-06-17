@@ -1,55 +1,68 @@
 #!/bin/bash
-# Bootstreep Homelab – Update-All Script
-# Führt System-Updates und alle Container-Updates durch
+# Update System + alle Docker-Container
 set -euo pipefail
 
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib.sh"
 
-log()  { echo -e "${GREEN}[✓]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-info() { echo -e "${CYAN}[i]${NC} $1"; }
+[ "$EUID" -eq 0 ] && die "Nicht als root ausführen"
 
-info "=== System-Updates ===" && sudo apt update && sudo apt upgrade -y
+echo "============================================"
+echo "  Update All – $(date '+%Y-%m-%d %H:%M')"
+echo "============================================"
 
-info "=== Docker-Container updaten ==="
-[ -d ~/docker ] || { warn "~/docker existiert nicht – bootstrap ausführen?"; exit 1; }
-cd ~/docker
-for d in */; do
-    if [ -f "$d/compose.yml" ]; then
-        log "Update: ${d%/}"
-        (cd "$d" && docker compose pull && docker compose up -d)
-    fi
-done
+echo ""
+echo "── System Update ──"
+sudo apt update 2>&1 | tail -2
+sudo apt upgrade -y 2>&1 | tail -2
+sudo apt autoremove -y 2>&1 | tail -2
+log "apt Update fertig"
 
-info "=== AMP Game-Instanzen updaten ==="
-if [ -d ~/docker/amp-instances ]; then
-    for f in ~/docker/amp-instances/*.yml; do
-        name=$(basename "$f" .yml)
-        log "Update: amp-instances/$name"
-        (cd ~/docker/amp-instances && docker compose -f "$name.yml" pull && docker compose -f "$name.yml" up -d) || warn "$name Update fehlgeschlagen"
-    done
-fi
+echo ""
+echo "── Watchtower pausieren ──"
+docker stop watchtower 2>/dev/null && log "Watchtower gestoppt" || true
 
-info "=== KI-Modelle aktualisieren ==="
-MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
-for model in $MODELS; do
-    if docker exec ollama ollama list 2>/dev/null | grep -q "^${model%%:*}"; then
-        log "→ $model vorhanden – Pulling Update..."
-        docker exec ollama ollama pull "$model" 2>/dev/null || warn "$model Update fehlgeschlagen"
+echo ""
+echo "── Docker Images pullen ──"
+pulled=0 failed=0
+for dir in "$HOME"/docker/*/; do
+    [ -f "$dir/compose.yml" ] || continue
+    name=$(basename "$dir")
+    [ "$name" = "amp-instances" ] && continue
+    info "Pulling $name..."
+    if (cd "$dir" && docker compose pull) 2>/dev/null; then
+        pulled=$((pulled + 1))
     else
-        log "→ $model nicht vorhanden – Pulling..."
-        docker exec ollama ollama pull "$model" 2>/dev/null || warn "$model Pull fehlgeschlagen"
+        warn "Pull fehlgeschlagen: $name"
+        failed=$((failed + 1))
     fi
 done
+log "$pulled gepullt, $failed fehlgeschlagen"
 
-info "=== Pi-hole aktualisieren ==="
-docker exec pihole pihole -up 2>/dev/null || warn "Pi-hole nicht erreichbar"
-docker exec pihole pihole -g 2>/dev/null || true
+echo ""
+echo "── Container neu starten (Rolling) ──"
+[ -d "$HOME/docker/caddy" ] && (cd "$HOME/docker/caddy" && docker compose up -d) || true
+for dir in "$HOME"/docker/*/; do
+    [ -f "$dir/compose.yml" ] || continue
+    name=$(basename "$dir")
+    [ "$name" = "caddy" ] && continue
+    [ "$name" = "amp-instances" ] && continue
+    (cd "$dir" && docker compose up -d) 2>/dev/null || warn "Restart: $name"
+done
 
-info "=== Docker-Cleanup ==="
-docker image prune -af 2>/dev/null || true
+echo ""
+echo "── Watchtower reaktivieren ──"
+docker start watchtower 2>/dev/null && log "Watchtower läuft" || true
 
-log "Update abgeschlossen!"
+echo ""
+echo "── Docker Cleanup ──"
+docker image prune -af --filter "until=168h" 2>/dev/null || true
+docker builder prune -af 2>/dev/null || true
+
+echo ""
+echo "── Health-Check ──"
+sleep 5
+"$SCRIPT_DIR/health-check.sh" || true
+
+echo ""
+log "Update fertig"

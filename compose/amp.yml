@@ -1,11 +1,18 @@
+---
+# AMP – Game-Server-Manager
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   amp:
-    image: ghcr.io/cubecoders/amp:latest
+    <<: *common
+    cap_drop: []
+    image: ghcr.io/cubecoders/amp:2.5.1.6
     container_name: amp
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    # cap_drop: ALL nicht möglich - AMP benötigt Docker Socket für Game-Server Management
     ports:
       - "8087:8080"
       - "8088:8088"
@@ -15,19 +22,12 @@ services:
     environment:
       - AMP_UID=1000
       - AMP_GID=1000
+      - AMP_USER=admin
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 5
-      start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   amp_data:
@@ -35,4 +35,3 @@ volumes:
 networks:
   homelab:
     external: true
-

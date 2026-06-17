@@ -1,47 +1,41 @@
+---
+# Valheim-Server (standalone)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   valheim:
-    image: lloesche/valheim-server:latest
+    <<: *common
+    image: lscr.io/linuxserver/valheim:latest
     container_name: valheim
-    restart: unless-stopped
     ports:
       - "2456:2456/udp"
       - "2457:2457/udp"
       - "2458:2458/udp"
-    volumes:
-      - valheim_data:/opt/valheim
-      - valheim_config:/config
     environment:
-      - SERVER_NAME=Bootstreep Valheim
-      - SERVER_PORT=2456
-      - WORLD_NAME=Dedicated
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE:-Europe/Berlin}
+      - SERVER_NAME="Bootstreep Valheim"
+      - WORLD_NAME=dedicated
       - SERVER_PASS=${SERVER_PASS:-changeme}
-      - TZ=Europe/Berlin
-      - PUBLIC=1
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - sys_nice
-    healthcheck:
-      test: ["CMD", "pgrep", "valheim_server"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
+      - SERVER_PUBLIC=true
+      - UPDATE_MODS_ON_START=true
+    volumes:
+      - valheim_config:/config
+      - valheim_data:/data
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "10m", max-file: "3"}
 
 volumes:
-  valheim_data:
   valheim_config:
+  valheim_data:
 
 networks:
   homelab:
     external: true
-

@@ -1,15 +1,20 @@
+---
+# Syncthing – P2P File-Sync (Privacy: keine Cloud, direkt Gerät-zu-Gerät)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   syncthing:
-    image: syncthing/syncthing:latest
+    <<: *common
+    image: syncthing/syncthing:1.27.7
     container_name: syncthing
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "8384:8384"
-      - "22000:22000"
+      - "22000:22000/tcp"
       - "21027:21027/udp"
     volumes:
       - syncthing_data:/var/syncthing
@@ -18,17 +23,9 @@ services:
       - STGUIADDRESS=0.0.0.0:8384
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8384/rest/system/status"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   syncthing_data:
@@ -36,4 +33,3 @@ volumes:
 networks:
   homelab:
     external: true
-

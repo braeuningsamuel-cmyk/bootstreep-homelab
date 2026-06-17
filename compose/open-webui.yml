@@ -1,34 +1,38 @@
+---
+# Open WebUI – KI-Chat (Telemetrie deaktiviert)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.9.6
+    <<: *common
+    image: ghcr.io/open-webui/open-webui:v0.3.32
     container_name: open-webui
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "3002:8080"
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    depends_on:
-      ollama:
-        condition: service_healthy
+      - DO_NOT_TRACK=true
+      - ENABLE_TELEMETRY=false
+      - SCARF_NO_ANALYTICS=true
+      - WEBUI_SECRET_KEY=${OPEN_WEBUI_SECRET:-}
+      - WEBUI_AUTH=true
     volumes:
       - open_webui_data:/app/backend/data
+    depends_on:
+      ollama: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "10m", max-file: "3"}
 
 volumes:
   open_webui_data:
@@ -36,5 +40,3 @@ volumes:
 networks:
   homelab:
     external: true
-
-

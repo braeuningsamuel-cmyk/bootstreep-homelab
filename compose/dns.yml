@@ -1,69 +1,63 @@
+---
+# Pi-hole + Unbound (DNS-over-HTTPS)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   unbound:
+    <<: *common
     image: mvance/unbound:latest
     container_name: unbound
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "127.0.0.1:5335:53/udp"
       - "127.0.0.1:5335:53/tcp"
     volumes:
-      - ./unbound.conf:/opt/unbound/unbound.conf:ro
+      - ../config/dns/unbound.conf:/opt/unbound/unbound.conf:ro
     healthcheck:
-      test: ["CMD", "dig", "+short", "google.com", "@127.0.0.1", "-p", "53"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "drill -Q google.com @127.0.0.1 || exit 1"]
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 10s
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "5m", max-file: "3"}
 
   pihole:
-    image: pihole/pihole:latest
+    <<: *common
+    image: pihole/pihole:2024.07.0
     container_name: pihole
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "53:53/udp"
       - "53:53/tcp"
       - "8081:80/tcp"
+      - "8443:443/tcp"
     environment:
-      TZ: ${TIMEZONE:-Europe/Berlin}
-      WEBPASSWORD: "${PIHOLE_PASS:-admin}"
+      TZ: "${TIMEZONE:-Europe/Berlin}"
+      WEBPASSWORD: "${PIHOLE_PASS:?PIHOLE_PASS erforderlich}"
       PIHOLE_DNS_: "127.0.0.1#5335"
       DNSSEC: "true"
+      PIHOLE_TELEMETRY: "false"
+      PIHOLE_DHCP_ACTIVE: "false"
+      PIHOLE_DOMAIN: "lan"
+      IPv6: "false"
     volumes:
       - pihole_etc:/etc/pihole
       - pihole_dnsmasq:/etc/dnsmasq.d
+    cap_add: [NET_ADMIN]
     depends_on:
-      unbound:
-        condition: service_healthy
+      unbound: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "sh", "-c", "dig +short google.com @127.0.0.1 || exit 1"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 15s
-    cap_add:
-      - NET_ADMIN
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "10m", max-file: "3"}
 
 volumes:
   pihole_etc:
@@ -72,4 +66,3 @@ volumes:
 networks:
   homelab:
     external: true
-

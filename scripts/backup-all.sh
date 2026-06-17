@@ -1,57 +1,80 @@
 #!/bin/bash
-# Bootstreep Homelab – Backup-All Script (3-2-1-Regel)
+# Backup aller Docker-Volumes + Configs
 set -euo pipefail
 
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib.sh"
 
-log()  { echo -e "${GREEN}[✓]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+[ "$EUID" -eq 0 ] && die "Nicht als root ausführen"
 
-BACKUP=~/backups/$(date +%Y%m%d-%H%M)
-mkdir -p "$BACKUP"
+BACKUP_ROOT="${BACKUP_ROOT:-$HOME/backups}"
+RETENTION_DAYS="${RETENTION_DAYS:-30}"
+ENCRYPT="${ENCRYPT:-false}"
+GPG_RECIPIENT="${GPG_RECIPIENT:-}"
 
-log "Alle Docker-Volumes sichern..."
-for volume in $(docker volume ls -q); do
-    name="$(echo "$volume" | tr '/' '_')"
-    docker run --rm -v "$volume":/data -v "$BACKUP":/backup alpine tar czf "/backup/${name}.tar.gz" -C /data . 2>/dev/null || \
-        warn "Volume $volume konnte nicht gesichert werden"
+TIMESTAMP=$(date +%Y-%m-%d_%H%M)
+BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
+mkdir -p "$BACKUP_DIR"
+
+echo "============================================"
+echo "  Backup nach $BACKUP_DIR"
+echo "============================================"
+
+echo ""
+echo "── Docker Volumes ──"
+vol_count=0
+for vol in $(docker volume ls -q); do
+    info "Backup $vol..."
+    if docker run --rm \
+        -v "$vol:/source:ro" \
+        -v "$BACKUP_DIR:/backup" \
+        alpine sh -c "tar czf /backup/vol_${vol}.tar.gz -C /source ." 2>/dev/null; then
+        vol_count=$((vol_count + 1))
+    else
+        warn "Fehler: $vol"
+    fi
+done
+log "$vol_count Volumes gesichert"
+
+echo ""
+echo "── Verzeichnisse ──"
+for d in docker config hermes ai-agent scripts; do
+    [ -d "$HOME/$d" ] && tar czf "$BACKUP_DIR/dir_${d}.tar.gz" -C "$HOME" "$d" && log "✓ ~/$d"
 done
 
-log "Pi-hole Teleporter-Export..."
-docker exec pihole pihole -a -t "$BACKUP/teleporter.tar.gz" 2>/dev/null || warn "Pi-hole Teleporter fehlgeschlagen"
+echo ""
+echo "── System-Configs ──"
+[ -f /etc/docker/daemon.json ] && sudo cp /etc/docker/daemon.json "$BACKUP_DIR/"
+[ -f /etc/samba/smb.conf ] && sudo cp /etc/samba/smb.conf "$BACKUP_DIR/"
+[ -f /etc/fail2ban/jail.local ] && sudo cp /etc/fail2ban/jail.local "$BACKUP_DIR/"
+[ -f /etc/sysctl.d/99-bootstreep.conf ] && sudo cp /etc/sysctl.d/99-bootstreep.conf "$BACKUP_DIR/"
 
-log "Umgebungsvariablen sichern..."
-ENV_FILES=(~/docker/*/.env)
-if [ -f "${ENV_FILES[0]}" ]; then
-    cp ~/docker/*/.env "$BACKUP"/ 2>/dev/null
-    if command -v gpg &>/dev/null && [ -n "${BACKUP_GPG_RECIPIENT:-}" ]; then
-        for f in "$BACKUP"/*.env; do
-            [ -f "$f" ] && gpg --yes --recipient "$BACKUP_GPG_RECIPIENT" --encrypt "$f" && rm "$f"
+echo ""
+echo "── .env-Dateien ──"
+env_files=$(find "$HOME" \( -name ".env" -path "*/docker/*" -o -name ".env" -path "*/ai-agent/*" \) 2>/dev/null)
+if [ -n "$env_files" ]; then
+    if [ "$ENCRYPT" = "true" ] && [ -n "$GPG_RECIPIENT" ]; then
+        echo "$env_files" | while read -r f; do
+            gpg --batch --yes --recipient "$GPG_RECIPIENT" \
+                --output "$BACKUP_DIR/env_$(basename "$(dirname "$f")").gpg" \
+                --encrypt "$f"
         done
-        log ".env-Dateien mit GPG verschlüsselt"
+        log ".env mit GPG verschlüsselt"
     else
-        warn ".env-Dateien unverschlüsselt (GPG nicht konfiguriert)"
+        warn ".env UNVERSCHLÜSSELT (ENCRYPT=true GPG_RECIPIENT=mail@x für Verschlüsselung)"
+        mkdir -p "$BACKUP_DIR/env"
+        echo "$env_files" | while read -r f; do
+            cp "$f" "$BACKUP_DIR/env/$(basename "$(dirname "$f")").env"
+        done
     fi
-else
-    log "Keine .env-Dateien gefunden – übersprungen."
 fi
 
-log "SSH-Konfiguration sichern..."
-sudo cp /etc/ssh/sshd_config "$BACKUP"/ 2>/dev/null || true
-cp ~/.ssh/config "$BACKUP"/ 2>/dev/null || true
+echo ""
+echo "── Alte Backups aufräumen ──"
+deleted=$(find "$BACKUP_ROOT" -maxdepth 1 -type d -name "20*" -mtime +"$RETENTION_DAYS" -exec rm -rf {} \; -print 2>/dev/null | wc -l)
+log "$deleted alte Backups gelöscht (>$RETENTION_DAYS Tage)"
 
-log "UFW-Regeln exportieren..."
-sudo ufw status numbered > "$BACKUP/ufw.txt" 2>/dev/null || true
-
-log "Docker-Compose-Dateien sichern..."
-cp -r ~/docker "$BACKUP/docker-configs" 2>/dev/null || true
-
-log "Crontab sichern..."
-crontab -l > "$BACKUP/crontab.txt" 2>/dev/null || true
-
-SIZE=$(du -sh "$BACKUP" | cut -f1)
-log "Backup abgeschlossen: $BACKUP ($SIZE)"
-warn "→ Kopiere das Backup auf ein separates Laufwerk / NAS!"
+echo ""
+du -sh "$BACKUP_DIR"
+echo ""
+log "Backup fertig: $BACKUP_DIR"

@@ -1,4 +1,19 @@
+# SSH Client-Konfiguration für Bootstreep Homelab
+# Wird nach ~/.ssh/config kopiert
+
 Host homelab
-    HostName __SERVER_IP__
-    User __USER__
+    HostName 192.168.178.20
+    User admin
+    Port 22
     IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    Compression yes
+    HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256
+    LogLevel ERROR
+
+Host pi
+    HostName 192.168.178.20
+    User admin
+    ProxyCommand ssh homelab -W %h:%p

@@ -1,12 +1,17 @@
+---
+# Sonarr – Serien-Management
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    <<: *common
+    image: lscr.io/linuxserver/sonarr:4.0.9
     container_name: sonarr
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "8989:8989"
     volumes:
@@ -19,17 +24,9 @@ services:
       - TZ=${TIMEZONE:-Europe/Berlin}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8989/api/v3/system/status"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   sonarr_config:
@@ -37,4 +34,3 @@ volumes:
 networks:
   homelab:
     external: true
-

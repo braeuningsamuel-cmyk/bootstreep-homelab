@@ -1,12 +1,17 @@
+---
+# SABnzbd – Download-Client
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   sabnzbd:
-    image: lscr.io/linuxserver/sabnzbd:latest
+    <<: *common
+    image: lscr.io/linuxserver/sabnzbd:4.3.2
     container_name: sabnzbd
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "8085:8080"
     volumes:
@@ -19,17 +24,9 @@ services:
       - TZ=${TIMEZONE:-Europe/Berlin}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 15s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   sabnzbd_config:
@@ -37,4 +34,3 @@ volumes:
 networks:
   homelab:
     external: true
-

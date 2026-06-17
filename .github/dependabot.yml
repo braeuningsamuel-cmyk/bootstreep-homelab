@@ -1,45 +1,26 @@
+---
 version: 2
 updates:
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "chore"
-    labels:
-      - "dependencies"
-      - "docker"
-
-  - package-ecosystem: "docker"
+  - package-ecosystem: "docker-compose"
     directory: "/compose"
     schedule:
       interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "chore"
-    labels:
-      - "dependencies"
-      - "docker"
+    labels: ["dependencies", "docker"]
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "docker"]
 
   - package-ecosystem: "pip"
     directory: "/ai-agent"
     schedule:
       interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "chore"
-    labels:
-      - "dependencies"
-      - "python"
+    labels: ["dependencies", "python"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "chore"
-    labels:
-      - "dependencies"
-      - "github-actions"
+    labels: ["dependencies", "ci"]

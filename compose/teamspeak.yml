@@ -1,12 +1,17 @@
+---
+# TeamSpeak – Voice-Server
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   teamspeak:
-    image: teamspeak/teamspeak:latest
+    <<: *common
+    image: teamspeak/teamspeak:3.13.7
     container_name: teamspeak
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "9987:9987/udp"
       - "10011:10011"
@@ -14,20 +19,12 @@ services:
     volumes:
       - teamspeak_data:/var/ts3server
     environment:
-      - TS6SERVER_LICENSE=accept
+      - TS3SERVER_LICENSE=accept
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "10011"]
-      interval: 30s
+      interval: 60s
       timeout: 5s
       retries: 5
-      start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   teamspeak_data:
@@ -35,4 +32,3 @@ volumes:
 networks:
   homelab:
     external: true
-

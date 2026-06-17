@@ -1,38 +1,41 @@
+---
+# Minecraft-Server (standalone, ohne AMP)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   minecraft:
-    image: itzg/minecraft-server:latest
+    <<: *common
+    image: itzg/minecraft-server:2024.07.0
     container_name: minecraft
-    restart: unless-stopped
     ports:
       - "25565:25565"
+      - "25575:25575"
+    environment:
+      - EULA=TRUE
+      - TYPE=PAPER
+      - MEMORY=4G
+      - DIFFICULTY=normal
+      - MODE=survival
+      - OPS=admin
+      - SERVER_NAME=Bootstreep-MC
+      - MAX_PLAYERS=20
+      - RCON_PASSWORD=${RCON_PASSWORD:-changeme}
+      - RCON_PORT=25575
     volumes:
       - minecraft_data:/data
-    environment:
-      - EULA=true
-      - VERSION=LATEST
-      - DIFFICULTY=normal
-      - MAX_PLAYERS=10
-      - MOTD=Bootstreep Minecraft Server
-      - ENABLE_RCON=true
-      - RCON_PASSWORD=${RCON_PASSWORD:-changeme}
-      - SEED=-215237419
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     healthcheck:
-      test: mc-health
+      test: ["CMD", "mc-health"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 3
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "10m", max-file: "3"}
 
 volumes:
   minecraft_data:
@@ -40,4 +43,3 @@ volumes:
 networks:
   homelab:
     external: true
-

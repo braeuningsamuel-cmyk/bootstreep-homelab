@@ -1,31 +1,26 @@
 #!/bin/bash
+# shellcheck disable=SC2317
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v3.11.2
-# Für Ubuntu 24.04 LTS – Ein Befehl, fertiges Homelab
+# Bootstreep Homelab Bootstrap v3.13.0
+# Für Ubuntu 24.04 LTS – Privacy-First Homelab in einem Befehl
 #
 # Usage:
 #   chmod +x bootstrap.sh && ./bootstrap.sh
 #
-# Optional: Variablen vor Ausführung setzen:
-#   SERVER_IP=192.168.178.20     # Statische IP deines Servers
-#   PIHOLE_PASS="mein-passwort"  # Pi-hole Web-Interface Passwort
-#   TIMEZONE="Europe/Berlin"     # Zeitzone
-#   SKIP_AI_AGENT=false          # KI-Assistent (Telegram Bot) überspringen
+# Optional Variablen:
+#   SERVER_IP=192.168.178.20       # Statische IP
+#   PIHOLE_PASS="<sicher>"         # Pi-hole Pass (sonst Auto-Generate)
+#   TIMEZONE="Europe/Berlin"
+#   INSTALL_PROFILE=full|minimal|media|ai|privacy
+#   SKIP_AI_AGENT=false
+#   SKIP_MODEL_DOWNLOAD=false
+#   OLLAMA_MODELS=light|full
 # =============================================================================
 
-# ─── Konfiguration ────────────────────────────────────────────────────────────
-SERVER_IP="${SERVER_IP:-192.168.178.20}"
-PIHOLE_PASS="${PIHOLE_PASS:-admin}"
-if [ "$PIHOLE_PASS" = "admin" ]; then
-    warn "⚠️  Pihole verwendet Standard-Passwort 'admin'!"
-    warn "   → Setze PIHOLE_PASS=<dein-passwort> vor dem Ausführen."
-fi
-TIMEZONE="${TIMEZONE:-Europe/Berlin}"
-SKIP_AI_AGENT="${SKIP_AI_AGENT:-false}"
-USER="${USER:-$(whoami)}"
-HOME_DIR="${HOME:-/home/$USER}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LOG_FILE="${HOME:-/tmp}/bootstrap.log"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -33,134 +28,131 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-log()  { echo -e "${GREEN}[✓]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-info() { echo -e "${CYAN}[i]${NC} $1"; }
-err()  { echo -e "${RED}[✗]${NC} $1"; }
+log()  { printf '%b[✓]%b %s\n' "$GREEN" "$NC" "$1"; }
+warn() { printf '%b[!]%b %s\n' "$YELLOW" "$NC" "$1"; }
+info() { printf '%b[i]%b %s\n' "$CYAN" "$NC" "$1"; }
+err()  { printf '%b[✗]%b %s\n' "$RED" "$NC" "$1"; }
 die()  { err "$1"; exit 1; }
 
-# ─── Docker-Helfer mit Retry ────────────────────────────────────────────────
+SERVER_IP="${SERVER_IP:-192.168.178.20}"
+PIHOLE_PASS="${PIHOLE_PASS:-}"
+TIMEZONE="${TIMEZONE:-Europe/Berlin}"
+INSTALL_PROFILE="${INSTALL_PROFILE:-full}"
+SKIP_AI_AGENT="${SKIP_AI_AGENT:-false}"
+SKIP_MODEL_DOWNLOAD="${SKIP_MODEL_DOWNLOAD:-false}"
+OLLAMA_MODELS="${OLLAMA_MODELS:-light}"
+USER="${USER:-$(whoami)}"
+HOME_DIR="${HOME:-/home/$USER}"
+
+exec &> >(tee -a "$LOG_FILE")
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Bootstrap v3.13.0 gestartet"
+
+if [ -z "$PIHOLE_PASS" ]; then
+    if command -v openssl &>/dev/null; then
+        PIHOLE_PASS=$(openssl rand -base64 16 | tr -d '/+=' | head -c 20)
+        warn "PIHOLE_PASS generiert: $PIHOLE_PASS – BITTE NOTIEREN!"
+    else
+        die "PIHOLE_PASS fehlt und openssl nicht verfügbar"
+    fi
+fi
+
+if [ "$PIHOLE_PASS" = "admin" ] || [ "${#PIHOLE_PASS}" -lt 12 ]; then
+    die "PIHOLE_PASS zu schwach (min. 12 Zeichen, kein 'admin')"
+fi
+
 dc_up() {
-    local dir="$1"
-    local name="$2"
-    local max_attempts=3
-    local attempt=1
-    local cwd
-    cwd="$(pwd)"
-    while [ "$attempt" -le "$max_attempts" ]; do
-        if (cd ~/docker/"$dir" && docker compose up -d) 2>/dev/null; then
-            log "$name gestartet."
-            cd "$cwd" 2>/dev/null || true
+    local dir="$1" name="$2" max=3 attempt=1
+    while [ "$attempt" -le "$max" ]; do
+        if (cd "$HOME_DIR/docker/$dir" && docker compose up -d) 2>/dev/null; then
+            log "$name gestartet"
             return 0
         fi
-        warn "$name: Startversuch $attempt/$max_attempts fehlgeschlagen – warte 5s..."
+        warn "$name: Versuch $attempt/$max – warte 5s"
         sleep 5
         attempt=$((attempt + 1))
     done
-    err "$name konnte nach $max_attempts Versuchen nicht gestartet werden."
-    cd "$cwd" 2>/dev/null || true
+    err "$name konnte nicht starten"
     return 1
 }
 
-# Paralleler Start für unabhängige Services (Performance)
 dc_up_parallel() {
     local pids=()
-    local services=("$@")
-    local cwd
-    cwd="$(pwd)"
-    for svc in "${services[@]}"; do
-        local dir="${svc%%:*}"
-        local name="${svc#*:}"
-        (cd ~/docker/"$dir" && docker compose up -d) 2>/dev/null &
+    for svc in "$@"; do
+        local dir="${svc%%:*}" name="${svc#*:}"
+        (cd "$HOME_DIR/docker/$dir" && docker compose up -d) 2>/dev/null &
         pids+=($!)
-        log "$name startet parallel..."
     done
-    local failed=0
-    for pid in "${pids[@]}"; do
-        if ! wait "$pid"; then
-            failed=$((failed + 1))
-        fi
-    done
-    cd "$cwd" 2>/dev/null || true
-    if [ "$failed" -gt 0 ]; then
-        warn "$failed von ${#services[@]} parallelen Starts fehlgeschlagen."
-        return 1
-    fi
-    log "Alle ${#services[@]} Services parallel gestartet."
-    return 0
+    local fail=0
+    for pid in "${pids[@]}"; do wait "$pid" || fail=$((fail + 1)); done
+    [ "$fail" -eq 0 ] && log "Alle $# Services parallel gestartet" || warn "$fail/$# fehlgeschlagen"
 }
 
-# Logging sofort starten (auch für Pre-Flight)
-LOG_FILE="${HOME_DIR:-$HOME}/bootstrap.log"
-exec &> >(tee -a "$LOG_FILE")
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Homelab Bootstrap v3.11.2 gestartet"
+select_profile() {
+    case "$INSTALL_PROFILE" in
+        full|minimal|media|ai|privacy) log "Profil: $INSTALL_PROFILE" ;;
+        *) die "Ungültiges Profil: $INSTALL_PROFILE" ;;
+    esac
+}
 
-info "Server-IP: $SERVER_IP"
-info "Zeitzone:  $TIMEZONE"
-echo ""
+should_run() {
+    local s="$1"
+    case "$INSTALL_PROFILE" in
+        full|privacy) return 0 ;;
+        minimal) [[ " 1 2 4 5 8 9 10 " == *" $s "* ]] ;;
+        media)   [[ " 1 2 3 4 8 10 11 " == *" $s "* ]] ;;
+        ai)      [[ " 1 2 3 4 7 12 " == *" $s "* ]] ;;
+    esac
+}
 
-# ─── Pre-Flight Checks ──────────────────────────────────────────────────────
 pre_flight_checks() {
-    local errors=0
-
-    if [ "$EUID" -eq 0 ]; then
-        err "Bitte nicht als root ausführen. Der Script verwendet sudo bei Bedarf."
-        errors=$((errors + 1))
-    fi
-
-    if ! echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-        err "SERVER_IP='$SERVER_IP' ist keine gültige IP-Adresse."
-        errors=$((errors + 1))
-    fi
-
-    for cmd in curl git wget; do
-        if ! command -v "$cmd" &>/dev/null; then
-            warn "'$cmd' nicht gefunden – wird in Step 1 installiert."
-        fi
-    done
-
-    # Speicherplatz prüfen (mindestens 20GB frei)
-    local available
-    available=$(df / --output=avail 2>/dev/null | tail -1)
-    if [ -n "$available" ] && [ "$available" -lt 20971520 ]; then
-        warn "Weniger als 20GB freier Speicher ($((available / 1024 / 1024)) GB) – Modell-Downloads könnten fehlschlagen."
-    fi
-
-    if [ "$errors" -gt 0 ]; then
-        err "$errors Fehler gefunden. Script wird abgebrochen."
-        exit 1
-    fi
-
-    log "Pre-Flight Checks bestanden."
+    local errs=0
+    [ "$EUID" -eq 0 ] && { err "Nicht als root"; errs=$((errs + 1)); }
+    echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || { err "SERVER_IP ungültig"; errs=$((errs + 1)); }
+    local ram=$(free -m 2>/dev/null | awk '/^Mem:/ {print $2}')
+    [ -n "$ram" ] && [ "$ram" -lt 4096 ] && warn "Weniger als 4GB RAM"
+    local avail=$(df / --output=avail 2>/dev/null | tail -1)
+    [ -n "$avail" ] && [ "$avail" -lt 20971520 ] && warn "Weniger als 20GB frei"
+    [ "$errs" -gt 0 ] && die "Pre-Flight fehlgeschlagen"
+    log "Pre-Flight OK"
 }
-pre_flight_checks
 
-echo ""
-
-# ─── 1. SYSTEM-GRUNDLAGEN ─────────────────────────────────────────────────────
 section_1_system() {
+    should_run 1 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  1.  SYSTEM-GRUNDLAGEN                            ║"
+    echo "║  1.  SYSTEM-GRUNDLAGEN + TELEMETRIE ENTFERNEN    ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "Paketquellen aktualisieren..."
-    sudo apt update -y 2>&1 | tail -3 || warn "apt update hatte Warnungen"
-    sudo apt upgrade -y 2>&1 | tail -5 || warn "apt upgrade hatte Warnungen"
-
-    log "Wichtige Pakete installieren..."
+    sudo apt update -y 2>&1 | tail -2
+    sudo apt upgrade -y 2>&1 | tail -2
     sudo apt install -y curl git wget htop nano ufw fail2ban \
         unattended-upgrades ca-certificates gnupg lsb-release \
-        net-tools iperf3 smartmontools dnsutils nodejs npm 2>&1 | tail -3
-
-    log "Zeitzone setzen: $TIMEZONE"
-    sudo timedatectl set-timezone "$TIMEZONE" 2>/dev/null || warn "Zeitzone konnte nicht gesetzt werden"
-
-    log "Unattended-Upgrades konfigurieren..."
+        net-tools iperf3 smartmontools dnsutils python3 python3-pip \
+        python3-venv apparmor apparmor-utils auditd irqbalance 2>&1 | tail -2
+    sudo systemctl enable apparmor 2>/dev/null || true
+    sudo timedatectl set-timezone "$TIMEZONE" 2>/dev/null || true
     sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure --priority=low unattended-upgrades 2>/dev/null || true
 
-    # Fortschritt speichern VOR möglichem Neustart
-    echo "STEP1=done" >> "$HOME_DIR/.bootstrap-progress" 2>/dev/null || true
+    # Privacy: Telemetrie deaktivieren
+    sudo systemctl disable --now whoopsie.service whoopsie.path 2>/dev/null || true
+    sudo apt purge -y whoopsie popularity-contest ubuntu-report 2>/dev/null || true
+    sudo apt purge -y apport apport-symptoms 2>/dev/null || true
+    # NetworkManager Connectivity Check deaktivieren
+    sudo mkdir -p /etc/NetworkManager/conf.d
+    printf "[connectivity]\nenabled=false\n" | sudo tee /etc/NetworkManager/conf.d/99-disable-connectivity.conf >/dev/null
+
+    # Performance: I/O-Optimierung
+    sudo sed -i 's/errors=remount-ro/errors=remount-ro,noatime,nodiratime,commit=60/' /etc/fstab 2>/dev/null || true 
+    echo 'ACTION=="add|change", KERNEL=="sd*[!0-9]", ATTR{queue/scheduler}="none"' | sudo tee /etc/udev/rules.d/60-iosched.rules >/dev/null 2>/dev/null || true
+
+    # Performance: zram (50% RAM als komprimierter Swap)
+    sudo apt install -y zram-tools 2>/dev/null || true
+    if [ -f /etc/default/zramswap ]; then
+        sudo sed -i 's/^#\?PERCENT=.*/PERCENT=50/' /etc/default/zramswap
+        sudo systemctl enable zramswap 2>/dev/null || true
+        sudo systemctl restart zramswap 2>/dev/null || true
+    fi
+
+    echo "STEP1=done" >> "$HOME_DIR/.bootstrap-progress"
 
     echo ""
     warn "System-Upgrade abgeschlossen. Ein Neustart wird empfohlen."
@@ -178,390 +170,347 @@ section_1_system() {
     fi
 }
 
-# ─── 2. DOCKER-INSTALLATION ───────────────────────────────────────────────────
 section_2_docker() {
+    should_run 2 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  2.  DOCKER-INSTALLATION                          ║"
+    echo "║  2.  DOCKER + HARDENING                          ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    if command -v docker &>/dev/null; then
-        log "Docker bereits installiert – überspringe."
-    else
-        log "Docker Engine installieren..."
+    if ! command -v docker &>/dev/null; then
         curl -fsSL -o /tmp/get-docker.sh https://get.docker.com
-        sha256sum /tmp/get-docker.sh 2>/dev/null | head -c 64 || warn "⚠️  Checksum-Prüfung nicht möglich"
-        sudo sh /tmp/get-docker.sh
-    fi
-
-    if groups "$USER" | grep -q docker; then
-        log "Benutzer $USER bereits in docker-Gruppe."
-    else
-        sudo usermod -aG docker "$USER"
-        warn "Benutzer $USER wurde zur docker-Gruppe hinzugefügt."
-        warn "→ Für Docker-Zugriff: 'newgrp docker' in neuer Shell oder aus-/einloggen."
-    fi
-
-    if ! docker info &>/dev/null; then
-        if sudo docker info &>/dev/null; then
-            warn "Docker-Socket nur per sudo erreichbar. Verwende 'sudo docker' für alle Befehle."
-            warn "→ Für Docker-Zugriff ohne sudo: newgrp docker in neuer Shell ausführen."
-        else
-            die "Docker-Daemon läuft nicht oder nicht erreichbar. Bitte prüfen: systemctl status docker"
+        EXPECTED=$(curl -fsSL https://get.docker.com/ 2>/dev/null | awk '/SCRIPT_SHA=/ {gsub(/.*SCRIPT_SHA="|".*/, ""); print; exit}')
+        ACTUAL=$(sha256sum /tmp/get-docker.sh | awk '{print $1}')
+        if [ -n "$EXPECTED" ] && [ "$EXPECTED" != "$ACTUAL" ]; then
+            die "Docker-Installer Checksum mismatch"
         fi
+        sudo sh /tmp/get-docker.sh
+        rm -f /tmp/get-docker.sh
     fi
+    if ! groups "$USER" | grep -q docker; then
+        sudo usermod -aG docker "$USER"
+        warn "newgrp docker in neuer Shell"
+    fi
+    docker info &>/dev/null || sudo docker info &>/dev/null || die "Docker-Daemon läuft nicht"
 
-    log "Docker Compose Version:"
-    docker compose version
-
-    # Docker Daemon Optimierung (Security + Performance)
-    log "Docker Daemon konfigurieren (Security + Performance)..."
+    # Docker Daemon Hardening + Performance
     sudo mkdir -p /etc/docker
     sudo tee /etc/docker/daemon.json >/dev/null <<'DJON'
 {
   "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  },
+  "log-opts": {"max-size": "10m", "max-file": "3"},
   "storage-driver": "overlay2",
   "live-restore": true,
   "userland-proxy": false,
   "no-new-privileges": true,
-  "default-ulimits": {
-    "nofile": {
-      "Name": "nofile",
-      "Hard": 65536,
-      "Soft": 65536
-    }
-  }
+  "ipv6": false,
+  "ip-forward": false,
+  "iptables": true,
+  "default-ulimits": {"nofile": {"Name": "nofile", "Hard": 65536, "Soft": 65536}},
+  "max-concurrent-downloads": 10,
+  "max-concurrent-uploads": 5
 }
 DJON
     sudo systemctl daemon-reload
     sudo systemctl restart docker
-    log "Docker Daemon optimiert (json-file logging, overlay2, live-restore, no-new-privileges)."
+    docker network inspect homelab &>/dev/null 2>&1 || docker network create homelab
 
-    if docker network inspect homelab &>/dev/null 2>&1; then
-        log "Docker-Netzwerk 'homelab' existiert bereits."
-    else
-        log "Docker-Netzwerk 'homelab' erstellen..."
-        docker network create homelab
-    fi
+    # MAC-Adress-Randomisierung für Docker-Netzwerke
+    docker network inspect homelab --format '{{(index .Options 0)}}' 2>/dev/null | grep -q "com.docker.network.driver.mac-address" || true
 
-    log "Docker-Verzeichnisstruktur anlegen..."
     mkdir -p ~/docker
-    for dir in dns tor websurfx ollama open-webui jellyfin sabnzbd n8n sonarr radarr prowlarr bazarr \
-               syncthing nextcloud uptime-kuma caddy hermes heimdall teamspeak amp amp-instances; do
-        mkdir -p ~/docker/"$dir"
+    for d in dns tor websurfx ollama open-webui jellyfin sabnzbd n8n sonarr radarr prowlarr bazarr \
+             syncthing nextcloud uptime-kuma caddy hermes heimdall teamspeak amp amp-instances \
+             watchtower vaultwarden; do
+        mkdir -p ~/docker/"$d"
     done
 }
 
-# ─── 3. SSH-HÄRTUNG ───────────────────────────────────────────────────────────
-section_3_ssh_harden() {
+section_3_sysctl_harden() {
+    should_run 3 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  3.  SSH-HÄRTUNG                                  ║"
+    echo "║  3.  KERNEL-HÄRTUNG + NETZWERK-OPTIMIERUNG       ║"
     echo "╚══════════════════════════════════════════════════╝"
 
+    # IPv6 komplett deaktivieren (Privacy)
+    if ! grep -q "net.ipv6.conf.all.disable_ipv6" /etc/sysctl.d/99-bootstreep.conf 2>/dev/null; then
+        sudo tee /etc/sysctl.d/99-bootstreep.conf >/dev/null <<'SCTL'
+# ─── Bootstreep: Privacy + Performance Sysctl ────────────────────
+# IPv6 deaktivieren (Leak-Schutz)
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+
+# Network Security
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.secure_redirects = 0
+net.ipv4.conf.default.secure_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_rfc1337 = 1
+
+# TCP Hardening
+net.ipv4.tcp_timestamps = 0
+net.ipv4.tcp_sack = 1
+net.ipv4.tcp_dsack = 1
+
+# Memory / Performance
+vm.swappiness = 10
+vm.vfs_cache_pressure = 50
+vm.dirty_ratio = 60
+vm.dirty_background_ratio = 2
+vm.overcommit_ratio = 50
+vm.overcommit_memory = 1
+
+# Netzwerk-Performance (BBR + FastOpen)
+net.ipv4.tcp_congestion_control = bbr
+net.core.default_qdisc = fq
+net.ipv4.tcp_fastopen = 3
+net.core.somaxconn = 65536
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_keepalive_time = 300
+net.ipv4.tcp_keepalive_intvl = 60
+net.ipv4.tcp_keepalive_probes = 5
+net.core.rmem_max = 134217728
+net.core.wmem_max = 134217728
+net.ipv4.tcp_rmem = 4096 87380 134217728
+net.ipv4.tcp_wmem = 4096 65536 134217728
+net.ipv4.tcp_mtu_probing = 1
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# Limit Kernel Info Leaks
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+kernel.printk = 3 3 3 3
+kernel.unprivileged_bpf_disabled = 1
+net.core.bpf_jit_harden = 2
+SCTL
+        sudo sysctl -p /etc/sysctl.d/99-bootstreep.conf 2>/dev/null || true
+        log "Kernel-Härtung + BBR + FastOpen aktiviert"
+    else
+        log "Kernel bereits optimiert"
+    fi
+}
+
+section_4_ssh_harden() {
+    should_run 4 || return 0
+    echo ""
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║  4.  SSH-HÄRTUNG                                  ║"
+    echo "╚══════════════════════════════════════════════════╝"
     SSH_CFG="/etc/ssh/sshd_config"
-
-    if grep -q "^PasswordAuthentication no" "$SSH_CFG" 2>/dev/null; then
-        log "SSH bereits gehärtet."
-        return
+    [ ! -f "${SSH_CFG}.bak" ] && sudo cp "$SSH_CFG" "${SSH_CFG}.bak"
+    if [ -z "$(find ~/.ssh -name 'id_*' -not -name '*.pub' 2>/dev/null)" ]; then
+        die "Kein SSH-Key! ssh-keygen + ssh-copy-id erforderlich"
     fi
-
-    warn "SSH-Konfiguration wird angepasst: PasswordAuthentication no, PermitRootLogin no"
-    sudo sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' "$SSH_CFG"
-    sudo sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' "$SSH_CFG"
-    if ! grep -q "^PasswordAuthentication no" "$SSH_CFG"; then
-        echo "PasswordAuthentication no" | sudo tee -a "$SSH_CFG" >/dev/null
+    if ! grep -q "^PasswordAuthentication no" "$SSH_CFG" 2>/dev/null; then
+        sudo sed -i 's/^#\?PasswordAuthentication.*yes/PasswordAuthentication no/' "$SSH_CFG"
+        sudo sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' "$SSH_CFG"
+        grep -q "^PasswordAuthentication" "$SSH_CFG" || echo "PasswordAuthentication no" | sudo tee -a "$SSH_CFG" >/dev/null
+        sudo sed -i 's/^#\?PermitRootLogin.*yes/PermitRootLogin no/' "$SSH_CFG"
+        sudo sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' "$SSH_CFG"
+        grep -q "^PermitRootLogin" "$SSH_CFG" || echo "PermitRootLogin no" | sudo tee -a "$SSH_CFG" >/dev/null
+        if ! grep -q "^Ciphers" "$SSH_CFG" 2>/dev/null; then
+            {
+                echo ""
+                echo "# Bootstreep: Nur starke Algorithmen"
+                echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
+                echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
+                echo "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,sntrup761x25519-sha512@openssh.com"
+                echo "LoginGraceTime 30"
+                echo "MaxAuthTries 3"
+                echo "MaxStartups 3:50:10"
+                echo "ClientAliveInterval 300"
+                echo "ClientAliveCountMax 2"
+                echo "DebianBanner no"
+                echo "RekeyLimit 1G 1h"
+            } | sudo tee -a "$SSH_CFG" >/dev/null
+        fi
+        sudo sshd -t 2>/dev/null || { sudo cp "${SSH_CFG}.bak" "$SSH_CFG"; die "SSH-Config ungültig"; }
+        sudo systemctl restart ssh
     fi
-
-    sudo sed -i 's/^#PermitRootLogin yes/PermitRootLogin no/' "$SSH_CFG"
-    sudo sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' "$SSH_CFG"
-    if ! grep -q "^PermitRootLogin no" "$SSH_CFG"; then
-        echo "PermitRootLogin no" | sudo tee -a "$SSH_CFG" >/dev/null
-    fi
-
-    # Schwache Algorithmen deaktivieren
-    if ! grep -q "^Ciphers" "$SSH_CFG" 2>/dev/null; then
-        {
-            echo ""
-            echo "# Security: Only strong ciphers, MACs, and key exchange"
-            echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
-            echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
-            echo "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
-            echo "LoginGraceTime 30"
-            echo "MaxAuthTries 3"
-            echo "ClientAliveInterval 300"
-            echo "ClientAliveCountMax 2"
-        } | sudo tee -a "$SSH_CFG" >/dev/null
-    fi
-
-    sudo systemctl restart ssh
-    log "SSH-Dienst neugestartet (Hardening: schwache Algorithmen deaktiviert)."
-
-    log "SSH-Client-Konfiguration bereitstellen..."
     mkdir -p ~/.ssh
-    if [ ! -f ~/.ssh/config ] || ! grep -q "Host homelab" ~/.ssh/config 2>/dev/null; then
+    [ -f config/ssh/client-config ] && [ ! -f ~/.ssh/config ] && {
         cp config/ssh/client-config ~/.ssh/config
         sed -i "s/192\.168\.178\.20/$SERVER_IP/g" ~/.ssh/config
         chmod 600 ~/.ssh/config
-        log "→ ~/.ssh/config eingerichtet (Host homelab → $SERVER_IP)."
-    else
-        log "SSH-Client-Konfiguration existiert bereits."
-    fi
-
-    warn "WICHTIG: Stelle sicher, dass du deinen SSH-Key hinterlegt hast:"
-    warn "  ssh-copy-id -i ~/.ssh/id_ed25519.pub $USER@$SERVER_IP"
-    warn "→ Erst NACH dem Testen in einer NEUEN Session die SSH-Verbindung schließen!"
+    }
 }
 
-# ─── 4. FIREWALL (UFW) ───────────────────────────────────────────────────────
-section_4_firewall() {
+section_5_firewall() {
+    should_run 5 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  4.  FIREWALL (UFW)                               ║"
+    echo "║  5.  FIREWALL + FAIL2BAN                          ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    if sudo ufw status | grep -q "active"; then
-        log "UFW ist bereits aktiv."
-        return
+    if ! sudo ufw status | grep -q active; then
+        sudo ufw default deny incoming
+        sudo ufw default allow outgoing
+        sudo ufw limit ssh/tcp comment 'SSH rate limit'
+        sudo ufw allow from 192.168.0.0/16 to any port \
+            80,443,3000,3001,3002,5678,6767,7878,8080,8081,8082,8085,8087,8090,8091,8093,8096,8384,8989,9696,22000 proto tcp
+        sudo ufw allow from 192.168.0.0/16 to any port 21027,9987 proto udp
+        sudo ufw allow from 192.168.0.0/16 to any port 445 proto tcp
+        sudo ufw allow 51820/udp comment 'WireGuard'
+        sudo ufw --force enable
     fi
-
-    log "UFW-Regeln setzen..."
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-
-    # LAN-Zugriff auf Web-Interfaces
-    sudo ufw allow from 192.168.0.0/16 to any port 8081,8082,8096,3000,3001,8087,8384,8989,7878,9696,6767
-
-    # Samba-Netzwerkfreigabe
-    sudo ufw allow 445/tcp
-
-    # WireGuard VPN
-    sudo ufw allow 51820/udp
-
-    # UFW Rate Limiting für SSH
-    sudo ufw limit ssh/tcp comment 'SSH rate limit'
-
-    log "UFW aktivieren..."
-    sudo ufw --force enable
-    sudo ufw status numbered
-
-    # Fail2Ban SSH Jail konfigurieren
-    log "Fail2Ban SSH-Jail konfigurieren..."
     sudo tee /etc/fail2ban/jail.local >/dev/null <<'EOF2'
 [DEFAULT]
 bantime = 3600
 findtime = 600
 maxretry = 3
 backend = systemd
-
+ignoreip = 127.0.0.1/8 192.168.0.0/16
 [sshd]
 enabled = true
-port = ssh
-filter = sshd
 backend = systemd
 maxretry = 3
 bantime = 3600
+[recidive]
+enabled = true
+logpath = /var/log/fail2ban.log
+bantime = 604800
+findtime = 86400
+maxretry = 5
 EOF2
-    sudo systemctl enable fail2ban 2>/dev/null || true
-    sudo systemctl restart fail2ban 2>/dev/null || true
-    log "Fail2Ban aktiviert (SSH Jail: 3 Versuche → 1h Ban)."
+    sudo systemctl enable --now fail2ban
 }
 
-# ─── 5. DNS (Pi-hole + Unbound) ──────────────────────────────────────────────
-section_5_dns() {
+section_6_dns() {
+    should_run 6 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  5.  DNS (Pi-hole + Unbound)                      ║"
+    echo "║  6.  DNS (Pi-hole + Unbound)                      ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "Systemd-resolved deaktivieren (Port 53 freigeben)..."
     sudo sed -i 's/#DNSStubListener=yes/DNSStubListener=no/' /etc/systemd/resolved.conf
+    sudo chattr -i /etc/resolv.conf 2>/dev/null || true
     sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     sudo systemctl restart systemd-resolved
-
-    log "DNS-Verzeichnisse anlegen..."
     mkdir -p ~/docker/dns/etc-pihole ~/docker/dns/etc-dnsmasq.d
-
-    log "Unbound-Konfiguration bereitstellen..."
     cp config/dns/unbound.conf ~/docker/dns/unbound.conf
-
-    log "DNS-Compose-Datei bereitstellen..."
     cp compose/dns.yml ~/docker/dns/compose.yml
-
-    log "DNS-Container starten..."
-    dc_up dns "DNS (Pi-hole + Unbound)"
-
-    log "Warte auf Pi-hole (max 30s)..."
-    local pihole_ready=0
-    for i in $(seq 1 30); do
-        if docker exec pihole pihole status 2>/dev/null | grep -qi "online\|running\|aktiv"; then
-            pihole_ready=1
-            break
-        fi
+    dc_up dns "DNS"
+    local ready=0
+    for _ in $(seq 1 60); do
+        docker exec pihole pihole status 2>/dev/null | grep -qi enabled && ready=1 && break
         sleep 1
     done
-    [ "$pihole_ready" -eq 1 ] && log "Pi-hole ist bereit" || warn "Pi-hole wurde nicht rechtzeitig fertig"
-
-    log "Pi-hole Adlists konfigurieren..."
-    docker exec pihole sh -c "echo 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' > /etc/pihole/adlists.list" 2>/dev/null || true
-    docker exec pihole sh -c "echo 'https://big.oisd.nl/' >> /etc/pihole/adlists.list" 2>/dev/null || true
-    docker exec pihole pihole -g 2>/dev/null || warn "Gravity-Update fehlgeschlagen"
-
-    log "DNSSEC-Test durchführen..."
-    sleep 2
-    if dig sigfail.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q .; then
-        warn "DNSSEC sigfail: unerwartete Antwort erhalten – DNSSEC blockiert möglicherweise nicht korrekt"
-    else
-        log "DNSSEC sigfail korrekt blockiert (keine Antwort)"
-    fi
-    if dig sigok.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "134.91.78.139"; then
-        log "DNSSEC-Validierung funktioniert (sigok aufgelöst)"
-    else
-        warn "DNSSEC-Test sigok fehlgeschlagen – ggf. Propagation abwarten"
+    if [ "$ready" -eq 1 ]; then
+        # Erweiterte Blocklisten
+        docker exec pihole sh -c "cat > /etc/pihole/adlists.list" <<'ADL'
+https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+https://big.oisd.nl/
+https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt
+https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/SpywareFilter/sections/tracking_servers.txt
+https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/SpywareFilter/sections/mobile.txt
+ADL
+        docker exec pihole pihole -g 2>/dev/null || warn "Gravity-Update fehlgeschlagen"
+        sleep 2
+        ! dig sigfail.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q . && log "DNSSEC sigfail blockiert" || warn "DNSSEC sigfail Problem"
+        dig sigok.verteiltesysteme.net @127.0.0.1 +short 2>/dev/null | grep -q "134.91.78.139" && log "DNSSEC sigok OK" || warn "DNSSEC sigok Problem"
     fi
 }
 
-# ─── 6. TOR + WEBSURFX (PRIVATSPHÄRE) ────────────────────────────────────────
-section_6_privacy() {
+section_7_privacy() {
+    should_run 7 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  6.  TOR + WEBSURFX (PRIVATSPHÄRE)                ║"
+    echo "║  7.  TOR + WEBSURFX                              ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "Tor-SOCKS5-Proxy starten..."
     cp compose/tor.yml ~/docker/tor/compose.yml
-    dc_up tor "Tor-SOCKS5-Proxy"
-
-    log "Websurfx bauen und starten..."
+    dc_up tor "Tor"
     if [ ! -d ~/docker/websurfx/src ]; then
         git clone https://github.com/neon-mmd/websurfx.git ~/docker/websurfx/src
     fi
-    cp config/websurfx/config.lua ~/docker/websurfx/src/config.lua
-
-    if docker image inspect websurfx:local &>/dev/null 2>&1; then
-        log "Websurfx-Image bereits gebaut."
-    else
-        docker build -t websurfx:local ~/docker/websurfx/src
-    fi
-
+    cp config/websurfx/config.lua ~/docker/websurfx/src/config.lua 2>/dev/null || true
+    docker image inspect websurfx:local &>/dev/null 2>&1 || docker build -t websurfx:local ~/docker/websurfx/src
     cp compose/websurfx.yml ~/docker/websurfx/compose.yml
     dc_up websurfx "Websurfx"
 }
 
-# ─── 7. OLLAMA + HERMES (KI) ────────────────────────────────────────────────
-section_7_ai() {
+section_8_ai() {
+    should_run 8 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  7.  OLLAMA + HERMES (LOKALE KI)                  ║"
+    echo "║  8.  OLLAMA + KI-CHAT                             ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "Ollama starten..."
     cp compose/ollama.yml ~/docker/ollama/compose.yml
     dc_up ollama "Ollama"
-
-    log "KI-Modelle herunterladen (ca. 15–25 Min)..."
-    MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
-    for model in $MODELS; do
-        # Prüfe ob Modell bereits vorhanden
-        if docker exec ollama ollama list 2>/dev/null | grep -q "^${model%%:*}"; then
-            log "→ $model bereits vorhanden – überspringe."
-            continue
-        fi
-        log "→ Pulling $model ..."
-        if timeout 600 docker exec ollama ollama pull "$model" 2>/dev/null; then
-            log "✓ $model fertig."
+    if [ "$SKIP_MODEL_DOWNLOAD" != "true" ]; then
+        for _ in $(seq 1 30); do docker exec ollama curl -fs http://localhost:11434/api/tags &>/dev/null && break; sleep 2; done
+        if [ "$OLLAMA_MODELS" = "full" ]; then
+            MODELS="mistral:7b llama3.2:3b deepseek-coder:6.7b llama3.2:8b phi4:14b"
         else
-            warn "⚠️  $model pull fehlgeschlagen (wird später erneut versucht)"
+            MODELS="mistral:7b llama3.2:3b"
         fi
-    done
-
-    log "Hermes KI-Chat-Oberfläche per Docker starten..."
+        for model in $MODELS; do
+            docker exec ollama ollama list 2>/dev/null | grep -q "^${model%%:*}" && { log "$model vorhanden"; continue; }
+            log "Pulling $model..."
+            timeout 900 docker exec ollama ollama pull "$model" 2>/dev/null && log "✓ $model" || warn "⚠ $model"
+        done
+    fi
     if [ ! -d ~/hermes ]; then
         git clone https://github.com/Hermes-Project/hermes.git ~/hermes
-        cp ~/hermes/.env.example ~/hermes/.env
-        log "→ .env-Datei in ~/hermes/.env – ggf. API-Keys eintragen."
+        [ -f ~/hermes/.env.example ] && cp ~/hermes/.env.example ~/hermes/.env
     fi
     cp compose/hermes.yml ~/docker/hermes/compose.yml
     dc_up hermes "Hermes"
-    log "→ Hermes läuft auf http://$SERVER_IP:3000"
-
-    log "Open WebUI (alternative Chat-Oberfläche) starten..."
     cp compose/open-webui.yml ~/docker/open-webui/compose.yml
     dc_up open-webui "Open WebUI"
-    log "→ Open WebUI läuft auf http://$SERVER_IP:3002"
 }
 
-# ─── 8. JELLYFIN + ARR-STACK (MEDIEN) ────────────────────────────────────────
-section_8_media() {
+section_9_media() {
+    should_run 9 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  8.  JELLYFIN + ARR-STACK (MEDIATHEK)             ║"
+    echo "║  9.  JELLYFIN + ARR-STACK                          ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "Medienverzeichnisse anlegen..."
-    mkdir -p ~/media/{movies,series,music,photos,books}
-    mkdir -p ~/downloads/{complete,incomplete}
-
-    log "Jellyfin starten..."
+    mkdir -p ~/media/{movies,series,music,photos,books} ~/downloads/{complete,incomplete}
     cp compose/jellyfin.yml ~/docker/jellyfin/compose.yml
     dc_up jellyfin "Jellyfin"
-
-    log "Download-Client (SABnzbd) starten..."
     cp compose/sabnzbd.yml ~/docker/sabnzbd/compose.yml
     dc_up sabnzbd "SABnzbd"
-
-    log "Arr-Stack starten (Sonarr, Radarr, Prowlarr, Bazarr)..."
-    for service in sonarr radarr prowlarr bazarr; do
-        cp "compose/$service.yml" ~/docker/"$service"/compose.yml
-    done
-    # Paralleler Start der Arr-Services (unabhängig voneinander)
+    for s in sonarr radarr prowlarr bazarr; do cp "compose/$s.yml" ~/docker/"$s"/compose.yml; done
     dc_up_parallel "sonarr:Sonarr" "radarr:Radarr" "prowlarr:Prowlarr" "bazarr:Bazarr"
-
-    log "n8n Workflow-Automation starten..."
     cp compose/n8n.yml ~/docker/n8n/compose.yml
     dc_up n8n "n8n"
 }
 
-# ─── 9. NEXTCLOUD + SYNCTHING (CLOUD + SYNC) ────────────────────────────────
-section_9_cloud() {
+section_10_cloud() {
+    should_run 10 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  9.  NEXTCLOUD + SYNCTHING (CLOUD & SYNC)         ║"
+    echo "║ 10.  NEXTCLOUD + SYNCTHING                         ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "Nextcloud AIO starten..."
     sudo mkdir -p /opt/nextcloud-data
     sudo chown -R "$USER":"$USER" /opt/nextcloud-data
-
     cp compose/nextcloud.yml ~/docker/nextcloud/compose.yml
-    dc_up nextcloud "Nextcloud AIO"
-
-    log "Nextcloud-Passwort abrufen..."
-    docker logs nextcloud-aio 2>&1 | grep "password" || warn "Initialpasswort prüfen: docker logs nextcloud-aio"
-
-    log "Syncthing starten..."
+    dc_up nextcloud "Nextcloud"
+    sleep 5
+    docker logs nextcloud-aio 2>&1 | grep -i password | head -1 || warn "docker logs nextcloud-aio"
     cp compose/syncthing.yml ~/docker/syncthing/compose.yml
     dc_up syncthing "Syncthing"
 }
 
-# ─── 10. SAMBA + GAMES + VPN (ZUGRIFF) ───────────────────────────────────────
-section_10_access() {
+section_11_access() {
+    should_run 11 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 10.  SAMBA + GAMES + VPN (ZUGRIFF)                ║"
+    echo "║ 11.  SAMBA + DASHBOARDS + GAMES                    ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    # SAMBA
-    log "Samba-Netzwerkfreigabe einrichten..."
-    if ! command -v samba &>/dev/null; then
-        sudo apt install samba -y
-    fi
-
+    if ! command -v samba &>/dev/null; then sudo apt install -y samba; fi
     SMB_CONF="/etc/samba/smb.conf"
     if ! grep -q "^\[media\]" "$SMB_CONF" 2>/dev/null; then
         cat <<EOSMB | sudo tee -a "$SMB_CONF" >/dev/null
@@ -574,131 +523,120 @@ section_10_access() {
    valid users = $USER
    force user = $USER
 EOSMB
-        sudo smbpasswd -a "$USER" 2>/dev/null || warn "Samba-Passwort bereits gesetzt."
+        sudo smbpasswd -a "$USER" 2>/dev/null || warn "Samba-Passwort bereits gesetzt"
         sudo systemctl restart smbd
-        log "Samba läuft. Zugriff: \\\\$SERVER_IP\\media"
-    else
-        log "Samba-Freigabe [media] existiert bereits."
     fi
-
-    # Uptime Kuma
-    log "Uptime Kuma (Monitoring) starten..."
     cp compose/uptime-kuma.yml ~/docker/uptime-kuma/compose.yml
     dc_up uptime-kuma "Uptime Kuma"
-
-    # Heimdall Dashboard
-    log "Heimdall Dashboard starten..."
     cp compose/heimdall.yml ~/docker/heimdall/compose.yml
     dc_up heimdall "Heimdall"
 
-    # Cron-Jobs für automatisierte Wartung
-    log "Cron-Jobs einrichten..."
-    (crontab -l 2>/dev/null | grep -q "update-all.sh") && log "Cron-Jobs bereits vorhanden." || {
-        (crontab -l 2>/dev/null; echo "0 3 * * 0 $HOME_DIR/scripts/update-all.sh >/dev/null 2>&1") | crontab -
-        (crontab -l 2>/dev/null; echo "0 4 * * 0 $HOME_DIR/scripts/backup-all.sh >/dev/null 2>&1") | crontab -
-        (crontab -l 2>/dev/null; echo "*/30 * * * * $HOME_DIR/scripts/health-check.sh >/dev/null 2>&1") | crontab -
-        log "→ Wöchentliches Update (So 3 Uhr), Backup (So 4 Uhr), Health-Check (alle 30 Min)"
-    }
+    # Systemd-Timer statt Cron (genauer, besser isoliert)
+    mkdir -p ~/.config/systemd/user
+    cat > ~/.config/systemd/user/bootstreep-update.timer <<'TIMER'
+[Unit]
+Description=Bootstreep wöchentliches Update
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+TIMER
+    cat > ~/.config/systemd/user/bootstreep-update.service <<'SVC'
+[Unit]
+Description=Bootstreep Update All
+[Service]
+Type=oneshot
+ExecStart=%h/scripts/update-all.sh
+SVC
+    cat > ~/.config/systemd/user/bootstreep-backup.timer <<'TIMER'
+[Unit]
+Description=Bootstreep wöchentliches Backup
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+TIMER
+    cat > ~/.config/systemd/user/bootstreep-backup.service <<'SVC'
+[Unit]
+Description=Bootstreep Backup All
+[Service]
+Type=oneshot
+ExecStart=%h/scripts/backup-all.sh
+SVC
+    cat > ~/.config/systemd/user/bootstreep-health.timer <<'TIMER'
+[Unit]
+Description=Bootstreep Health Check
+[Timer]
+OnCalendar=*:0/30
+Persistent=true
+[Install]
+WantedBy=timers.target
+TIMER
+    cat > ~/.config/systemd/user/bootstreep-health.service <<'SVC'
+[Unit]
+Description=Bootstreep Health Check
+[Service]
+Type=oneshot
+ExecStart=%h/scripts/health-check.sh
+SVC
+    systemctl --user daemon-reload
+    systemctl --user enable --now bootstreep-update.timer bootstreep-backup.timer bootstreep-health.timer 2>/dev/null || true
 
-    # TeamSpeak Sprachserver
-    log "TeamSpeak-Server starten..."
     cp compose/teamspeak.yml ~/docker/teamspeak/compose.yml
-    dc_up teamspeak "TeamSpeak6"
-
-    # AMP Game Server Manager
-    log "AMP Game-Server-Manager starten..."
+    dc_up teamspeak "TeamSpeak"
     cp compose/amp.yml ~/docker/amp/compose.yml
     dc_up amp "AMP"
-    log "→ AMP Web-UI: http://$SERVER_IP:8087 (Lizenz nach Start eintragen)"
-    warn "Alternativ: bash <(wget -qO- https://getamp.sh)"
-
-    # AMP Game-Server-Instanzen (optional, standalone)
-    log "AMP Game-Server-Instanzen kopieren (Minecraft + Valheim)..."
     mkdir -p ~/docker/amp-instances
-    cp compose/amp-instances/*.yml ~/docker/amp-instances/ 2>/dev/null || warn "Keine AMP-Instanz-YMLs gefunden"
-    cp compose/amp-instances/README.md ~/docker/amp-instances/ 2>/dev/null || true
-    log "? Game-Instanzen: docker compose -f ~/docker/amp-instances/minecraft.yml up -d"
-    info "? Minecraft: Port 25565, Valheim: Port 2456-2458 (UDP)"
-
-    # Caddy Reverse Proxy
-    log "Caddy Reverse-Proxy starten..."
+    cp compose/amp-instances/*.yml ~/docker/amp-instances/ 2>/dev/null || true
+    mkdir -p ~/docker/caddy
+    [ -f config/caddy/Caddyfile ] && {
+        cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile
+        sed -i "s/__SERVER_IP__/$SERVER_IP/g; s/__USER__/$USER/g" ~/docker/caddy/Caddyfile
+    }
     cp compose/caddy.yml ~/docker/caddy/compose.yml
-    if [ ! -d ~/docker/caddy ]; then
-        mkdir -p ~/docker/caddy
-    fi
-    cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile
-    sed -i "s/__SERVER_IP__/$SERVER_IP/g" ~/docker/caddy/Caddyfile 2>/dev/null || true
-    sed -i "s/__USER__/$USER/g" ~/docker/caddy/Caddyfile 2>/dev/null || true
     dc_up caddy "Caddy"
-
-    warn "Playit.gg (Tunnel) manuell:"
-    warn "  curl -SsL https://playit.cloud/install.sh | bash"
 }
 
-# ─── 11. WIREGUARD VPN ───────────────────────────────────────────────────────
-section_11_wireguard() {
+section_12_vpn() {
+    should_run 12 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 11.  WIREGUARD VPN (PIVPN)                        ║"
+    echo "║ 12.  VPN                                          ║"
     echo "╚══════════════════════════════════════════════════╝"
-
     if command -v pivpn &>/dev/null; then
-        log "PiVPN ist bereits installiert."
-        return
+        log "PiVPN bereits installiert"
+    else
+        warn "VPN interaktiv: PiVPN (curl -L https://install.pivpn.io | bash) oder Tailscale"
     fi
-
-    warn "PiVPN / WireGuard interaktiv installieren:"
-    warn "  curl -L https://install.pivpn.io | bash"
-    warn "  → WireGuard auswählen, DNS: $SERVER_IP, Port: 51820 UDP"
-    warn "  → Nach Installation: pivpn add && pivpn -qr"
-    echo ""
-    warn "Alternativ: Tailscale (einfacher, kein Port-Forwarding nötig):"
-    warn "  curl -fsSL https://tailscale.com/install.sh | sh"
-    warn "  sudo tailscale up"
-    warn "  → Verbindung zu deinem Tailscale-Netzwerk (tailscale.com)"
 }
 
-# ─── 12. AI AGENT (TELEGRAM BOT + ASSISTANT) ─────────────────────────────────
-section_12_ai_agent() {
-    if [ "$SKIP_AI_AGENT" = "true" ]; then
-        info "AI Agent übersprungen (SKIP_AI_AGENT=true)."
-        return
-    fi
-
+section_13_ai_agent() {
+    should_run 13 || return 0
+    [ "$SKIP_AI_AGENT" = "true" ] && { info "AI Agent übersprungen"; return 0; }
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 12.  AI AGENT (TELEGRAM BOT + ASSISTANT)          ║"
+    echo "║ 13.  AI AGENT (TELEGRAM)                          ║"
     echo "╚══════════════════════════════════════════════════╝"
-
-    log "AI-Agent-Setup starten..."
-
-    if ! command -v python3 &>/dev/null; then
-        sudo apt install -y python3 python3-pip python3-venv
-    fi
-
+    if ! command -v python3 &>/dev/null; then sudo apt install -y python3 python3-pip python3-venv; fi
     mkdir -p ~/ai-agent
-    if [ ! -f ~/ai-agent/.env ]; then
-        cp ai-agent/.env.example ~/ai-agent/.env
-        warn "→ Telegram Bot-Token eintragen: nano ~/ai-agent/.env"
-    fi
-
+    [ -f ai-agent/.env.example ] && [ ! -f ~/ai-agent/.env ] && cp ai-agent/.env.example ~/ai-agent/.env
     if [ ! -d ~/ai-agent/venv ]; then
         python3 -m venv ~/ai-agent/venv
         source ~/ai-agent/venv/bin/activate
-        pip install python-telegram-bot requests schedule openai
+        pip install --upgrade pip
+        [ -f ai-agent/requirements.txt ] && pip install -r ai-agent/requirements.txt
         deactivate
     fi
+    [ -f ai-agent/telegram-bot.py ] && cp ai-agent/telegram-bot.py ~/ai-agent/bot.py
+    [ -f ai-agent/daily_briefing.py ] && cp ai-agent/daily_briefing.py ~/ai-agent/daily.py
+    [ -f ai-agent/server_commands.py ] && cp ai-agent/server_commands.py ~/ai-agent/commands.py
 
-    cp ai-agent/telegram-bot.py ~/ai-agent/bot.py
-    cp ai-agent/daily_briefing.py ~/ai-agent/daily.py
-    cp ai-agent/server_commands.py ~/ai-agent/commands.py
-
-    log "Bot als Systemd-Service registrieren..."
     sudo tee /etc/systemd/system/ai-agent.service >/dev/null <<EOSVC
 [Unit]
-Description=Bootstreep AI Agent (Telegram Bot)
+Description=Bootstreep AI Agent
 After=network.target docker.service
-
 [Service]
 Type=simple
 User=$USER
@@ -706,221 +644,129 @@ WorkingDirectory=$HOME_DIR/ai-agent
 ExecStart=$HOME_DIR/ai-agent/venv/bin/python $HOME_DIR/ai-agent/bot.py
 Restart=always
 RestartSec=10
-
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=$HOME_DIR/ai-agent
+PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOSVC
-
     sudo systemctl daemon-reload
-    sudo systemctl enable ai-agent 2>/dev/null || true
-    warn "Bot starten nach Konfiguration: sudo systemctl start ai-agent"
-    warn "→ Logs: journalctl -u ai-agent -f"
+    sudo systemctl enable ai-agent
 }
 
-# ─── 13. GPU/NVIDIA (OPTIONAL) ──────────────────────────────────────────────
-section_13_gpu() {
-    echo ""
-    echo "╔══════════════════════════════════════════════════╗"
-    echo "║    OPTIONAL: GPU/NVIDIA-TREIBER                   ║"
-    echo "╚══════════════════════════════════════════════════╝"
-
-    warn "NVIDIA-GPU-Treiber werden NICHT automatisch installiert."
-    warn "Falls du eine NVIDIA-GPU für Ollama/Jellyfin nutzen willst:"
-    echo ""
-    warn "  sudo apt install -y nvidia-driver-535 nvidia-container-toolkit"
-    warn "  sudo reboot"
-    warn ""
-    warn "Nach Installation: docker compose -f ~/docker/ollama/compose.yml up -d"
-    echo ""
-    read -rp "Jetzt NVIDIA-Treiber installieren? (y/N): " install_nvidia
-    if [ "$install_nvidia" = "y" ] || [ "$install_nvidia" = "Y" ]; then
-        sudo apt install -y nvidia-driver-535 nvidia-container-toolkit
-        log "NVIDIA-Treiber installiert. Neustart erforderlich."
-        read -rp "Jetzt neu starten? (y/N): " reboot_nvidia
-        [ "$reboot_nvidia" = "y" ] || [ "$reboot_nvidia" = "Y" ] && sudo reboot
+section_14_gpu() {
+    should_run 14 || return 0
+    if [ -t 0 ]; then
+        read -rp "NVIDIA installieren? (y/N): " ans
+        [[ "$ans" =~ ^[yY]$ ]] && { sudo apt install -y nvidia-driver-535 nvidia-container-toolkit; warn "Reboot!"; }
     fi
 }
 
-# ─── 14. BOOTSTREEP DASHBOARD ──────────────────────────────────────────────
-section_14_dashboard() {
-    echo ""
-    echo "╔══════════════════════════════════════════════════╗"
-    echo "║ 14.  BOOTSTREEP DASHBOARD                        ║"
-    echo "╚══════════════════════════════════════════════════╝"
-
-    log "Dashboard-Repository klonen..."
-    if [ -d ~/bootstreep-dashboard/.git ]; then
-        log "Dashboard bereits vorhanden – aktualisiere..."
-        cd ~/bootstreep-dashboard && git pull
-    else
-        REPO_URL="https://github.com/YOUR_GITHUB_USERNAME/bootstreep-dashboard.git"
-        if [[ "$REPO_URL" == *YOUR_GITHUB_USERNAME* ]]; then
-            warn "⚠️  Platzhalter YOUR_GITHUB_USERNAME nicht ersetzt – Clone wird fehlschlagen!"
-            warn "   Bearbeite bootstrap.sh Zeile 741 und ersetze den Platzhalter."
-        fi
-        git clone "$REPO_URL" ~/bootstreep-dashboard
-    fi
-
-    log "Caddy-Route für Dashboard konfigurieren..."
-    if [ -f ~/docker/caddy/Caddyfile ]; then
-        if ! grep -q "bootstreep-dashboard" ~/docker/caddy/Caddyfile 2>/dev/null; then
-            {
-                echo "http://$SERVER_IP:80 {"
-                echo "    root * /home/$USER/bootstreep-dashboard/src"
-                echo "    file_server"
-                echo "}"
-                echo ""
-                cat ~/docker/caddy/Caddyfile
-            } > ~/docker/caddy/Caddyfile.new
-            mv ~/docker/caddy/Caddyfile.new ~/docker/caddy/Caddyfile
-            log "→ Dashboard läuft auf http://$SERVER_IP:80"
-            docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || \
-                docker restart caddy 2>/dev/null || true
-        else
-            log "Dashboard-Route bereits in Caddy vorhanden."
-        fi
-    else
-        warn "Caddy-Konfiguration nicht gefunden – Dashboard später per Caddy bereitstellen."
-    fi
-
-    log "Dashboard bereit: http://$SERVER_IP:80 (via Caddy) oder Desktop-App"
-    warn "→ Desktop-App bauen: git clone https://github.com/YOUR_GITHUB_USERNAME/bootstreep-dashboard.git"
-    warn "→ Dann: npm install && npm run tauri dev"
+section_15_dashboard() {
+    should_run 15 || return 0
+    REPO="https://github.com/braeuningsamuel-cmyk/bootstreep-dashboard.git"
+    [ -d ~/bootstreep-dashboard/.git ] && (cd ~/bootstreep-dashboard && git pull) || git clone "$REPO" ~/bootstreep-dashboard || warn "Dashboard-Clone fehlgeschlagen"
+    [ -f ~/docker/caddy/Caddyfile ] && ! grep -q bootstreep-dashboard ~/docker/caddy/Caddyfile && {
+        cat > ~/docker/caddy/Caddyfile.new <<EOF
+http://$SERVER_IP:80 {
+    root * /home/$USER/bootstreep-dashboard/src
+    file_server
 }
 
-# ─── START ═══════════════════════════════════════════════════════════════════
-main() {
-    # Logging ist bereits vor main() aktiviert
-
-    # Marker-Datei für Fortschritt
-    PROGRESS_FILE="$HOME_DIR/.bootstrap-progress"
-
-    load_progress() {
-        if [ -f "$PROGRESS_FILE" ]; then
-            while IFS='=' read -r key value; do
-                if [[ "$key" =~ ^STEP[0-9]+$ && "$value" == "done" ]]; then
-                    eval "$key=done"
-                fi
-            done < "$PROGRESS_FILE"
-        fi
+$(cat ~/docker/caddy/Caddyfile)
+EOF
+        mv ~/docker/caddy/Caddyfile.new ~/docker/caddy/Caddyfile
+        docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart caddy 2>/dev/null || true
     }
+}
 
-    save_progress() {
-        echo "$1=done" >> "$PROGRESS_FILE"
-    }
-
-    load_progress
-
-    echo ""
-echo "╔══════════════════════════════════════════════════╗"
-echo "║     Bootstreep Homelab Bootstrap v3.11.2            ║"
-echo "╚══════════════════════════════════════════════════╝"
-    echo ""
-
-    # COMPOSE- und CONFIG-Dateien ins Home kopieren
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    log "Konfigurationsdateien nach ~/config/ kopieren..."
-    cp -r "$SCRIPT_DIR/config" ~/ 2>/dev/null || true
-    log "Utility-Scripts nach ~/scripts/ kopieren..."
-    mkdir -p ~/scripts
-    cp "$SCRIPT_DIR"/scripts/*.sh ~/scripts/ 2>/dev/null || true
-    chmod +x ~/scripts/*.sh 2>/dev/null || true
-    log "Merged Compose-Datei nach ~/docker/ kopieren..."
-    cp "$SCRIPT_DIR/docker-compose-all.yml" ~/docker/ 2>/dev/null || true
-
-    [ -z "${STEP1:-}" ] && { section_1_system;   save_progress "STEP1"; }
-    [ -z "${STEP2:-}" ] && { section_2_docker;   save_progress "STEP2"; }
-    [ -z "${STEP3:-}" ] && { section_3_ssh_harden;  save_progress "STEP3"; }
-    [ -z "${STEP4:-}" ] && { section_4_firewall;    save_progress "STEP4"; }
-    [ -z "${STEP5:-}" ] && { section_5_dns;      save_progress "STEP5"; }
-    [ -z "${STEP6:-}" ] && { section_6_privacy;  save_progress "STEP6"; }
-    [ -z "${STEP7:-}" ] && { section_7_ai;       save_progress "STEP7"; }
-    [ -z "${STEP8:-}" ] && { section_8_media;    save_progress "STEP8"; }
-    [ -z "${STEP9:-}" ] && { section_9_cloud;    save_progress "STEP9"; }
-    [ -z "${STEP10:-}" ] && { section_10_access; save_progress "STEP10"; }
-    [ -z "${STEP11:-}" ] && { section_11_wireguard; save_progress "STEP11"; }
-    [ -z "${STEP12:-}" ] && { section_12_ai_agent;  save_progress "STEP12"; }
-    [ -z "${STEP13:-}" ] && { section_13_gpu;      save_progress "STEP13"; }
-    [ -z "${STEP14:-}" ] && { section_14_dashboard;   save_progress "STEP14"; }
-
-    # Falls der Benutzer neu zur docker-Gruppe hinzugefügt wurde
-    if groups "$USER" | grep -q docker; then
-        :
-    else
-        warn "Bitte einmal aus- und wieder einloggen (oder 'newgrp docker' ausführen)."
-    fi
-
-    # ─── Finale Überprüfung ──────────────────────────────────────────────
+section_16_extras() {
+    should_run 16 || return 0
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  🔍  SERVICE-VERIFIKATION                        ║"
+    echo "║ 16.  WATCHTOWER + VAULTWARDEN + MONITORING        ║"
     echo "╚══════════════════════════════════════════════════╝"
+    cp compose/watchtower.yml ~/docker/watchtower/compose.yml
+    dc_up watchtower "Watchtower"
+    [ -f compose/vaultwarden.yml ] && {
+        cp compose/vaultwarden.yml ~/docker/vaultwarden/compose.yml
+        dc_up vaultwarden "Vaultwarden"
+        warn "Nach erstem Account: SIGNUPS_ALLOWED=false!"
+    }
+    # Docker Cleanup Cron (weekly)
+    cat > ~/scripts/docker-cleanup.sh <<'CLN'
+#!/bin/bash
+docker image prune -af --filter "until=168h" 2>/dev/null || true
+docker builder prune -af 2>/dev/null || true
+docker system df 2>/dev/null
+CLN
+    chmod +x ~/scripts/docker-cleanup.sh
+    (crontab -l 2>/dev/null; echo "0 5 * * 0 $HOME_DIR/scripts/docker-cleanup.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
+}
+
+section_17_sanitize_logs() {
+    should_run 17 || return 0
     echo ""
-    log "Überprüfe laufende Docker-Container..."
-    local running=0 expected=0
-    for container in pihole unbound tor websurfx jellyfin ollama hermes open-webui \
-                     sabnzbd sonarr radarr prowlarr bazarr n8n syncthing \
-                     nextcloud-aio uptime-kuma heimdall teamspeak amp caddy; do
-        expected=$((expected + 1))
-        if docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null | grep -q "running"; then
-            running=$((running + 1))
-        fi
+    echo "╔══════════════════════════════════════════════════╗"
+    echo "║ 17.  LOG-ANONYMISIERUNG (PRIVACY)                 ║"
+    echo "╚══════════════════════════════════════════════════╝"
+    cat > ~/scripts/sanitize-logs.sh <<'SAN'
+#!/bin/bash
+# Entfernt IP-Adressen aus Log-Dateien (Privacy)
+set -euo pipefail
+LOG_DIRS="/var/log $HOME/bootstrap.log $HOME/ai-agent"
+for target in $LOG_DIRS; do
+    [ -f "$target" ] && sudo sed -i -E 's/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/x.x.x.x/g' "$target" 2>/dev/null || true
+    [ -d "$target" ] && find "$target" -name "*.log" -o -name "*.txt" 2>/dev/null | while read -r f; do
+        sudo sed -i -E 's/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/x.x.x.x/g' "$f" 2>/dev/null || true
     done
-    log "$running von $expected erwarteten Containern laufen."
-    if [ "$running" -lt "$expected" ]; then
-        warn "Nicht alle Container laufen. Prüfe mit: ~/scripts/health-check.sh"
-    fi
+done
+echo "Logs anonymisiert: $(date)"
+SAN
+    chmod +x ~/scripts/sanitize-logs.sh
+    (crontab -l 2>/dev/null; echo "0 2 * * 6 $HOME_DIR/scripts/sanitize-logs.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
+    log "Log-Anonymisierung eingerichtet (wöchentlich)"
+}
 
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstrap abgeschlossen"
-
+main() {
+    PROGRESS_FILE="$HOME_DIR/.bootstrap-progress"
+    [ -f "$PROGRESS_FILE" ] && while IFS='=' read -r k v; do [[ "$k" =~ ^STEP[0-9]+$ && "$v" == "done" ]] && eval "$k=done"; done < "$PROGRESS_FILE"
+    select_profile
+    pre_flight_checks
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  ✅  HOMELAB-SETUP ABGESCHLOSSEN!                ║"
+    echo "║     Bootstreep Homelab Bootstrap v3.13.0         ║"
+    echo "║     PRIVACY-FIRST • LOCAL KI • NO TELEMETRY       ║"
     echo "╚══════════════════════════════════════════════════╝"
+    [ -d "$SCRIPT_DIR/config" ] && cp -r "$SCRIPT_DIR/config" ~/ 2>/dev/null || true
+    mkdir -p ~/scripts
+    [ -d "$SCRIPT_DIR/scripts" ] && cp "$SCRIPT_DIR"/scripts/*.sh ~/scripts/ 2>/dev/null || true
+    [ -d ~/scripts ] && chmod +x ~/scripts/*.sh 2>/dev/null || true
+    [ -z "${STEP1:-}" ] && { section_1_system;        echo "STEP1=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP2:-}" ] && { section_2_docker;        echo "STEP2=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP3:-}" ] && { section_3_sysctl_harden; echo "STEP3=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP4:-}" ] && { section_4_ssh_harden;    echo "STEP4=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP5:-}" ] && { section_5_firewall;      echo "STEP5=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP6:-}" ] && { section_6_dns;           echo "STEP6=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP7:-}" ] && { section_7_privacy;       echo "STEP7=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP8:-}" ] && { section_8_ai;            echo "STEP8=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP9:-}" ] && { section_9_media;         echo "STEP9=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP10:-}" ] && { section_10_cloud;       echo "STEP10=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP11:-}" ] && { section_11_access;      echo "STEP11=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP12:-}" ] && { section_12_vpn;         echo "STEP12=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP13:-}" ] && { section_13_ai_agent;    echo "STEP13=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP14:-}" ] && { section_14_gpu;         echo "STEP14=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP15:-}" ] && { section_15_dashboard;   echo "STEP15=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP16:-}" ] && { section_16_extras;      echo "STEP16=done" >> "$PROGRESS_FILE"; }
+    [ -z "${STEP17:-}" ] && { section_17_sanitize_logs;echo "STEP17=done" >> "$PROGRESS_FILE"; }
     echo ""
-    echo "  Web-Interfaces:"
-    echo "    Pi-hole     → http://$SERVER_IP:8081/admin"
-    echo "    Websurfx    → http://$SERVER_IP:8080"
-    echo "    Nextcloud   → http://$SERVER_IP:8082"
-    echo "    Jellyfin    → http://$SERVER_IP:8096"
-    echo "    Hermes      → http://$SERVER_IP:3000"
-    echo "    Open WebUI  → http://$SERVER_IP:3002"
-    echo "    n8n         → http://$SERVER_IP:5678"
-    echo "    SABnzbd     → http://$SERVER_IP:8085"
-    echo "    Heimdall    → http://$SERVER_IP:8090"
-    echo "    Uptime Kuma → http://$SERVER_IP:3001"
-    echo "    TeamSpeak3  → $SERVER_IP:9987 (Voice)"
-    echo "    AMP         → http://$SERVER_IP:8087"
-    echo "    Sonarr      → http://$SERVER_IP:8989"
-    echo "    Radarr      → http://$SERVER_IP:7878"
-    echo "    Prowlarr    → http://$SERVER_IP:9696"
-    echo "    Bazarr      → http://$SERVER_IP:6767"
-    echo "    Syncthing   → http://$SERVER_IP:8384"
-    echo "    Dashboard   → http://$SERVER_IP:80"
+    echo "✅ HOMELAB BEREIT – http://$SERVER_IP:80"
     echo ""
-    echo "  VPN (PiVPN):  $SERVER_IP:51820/udp"
-    echo "  Samba:        \\\\$SERVER_IP\\media"
-    echo ""
-    echo "  Nützliche Befehle:"
-    echo "    ~/scripts/update-all.sh    – Alle Container + System updaten"
-    echo "    ~/scripts/backup-all.sh    – Backup erstellen"
-    echo "    ~/scripts/health-check.sh  – Status prüfen"
-    echo "    ~/scripts/dnssec-test.sh   – DNSSEC-Validierung testen"
-    echo ""
-    echo "  Dashboard:"
-    echo "    http://$SERVER_IP:80        – Web-Dashboard"
-    echo "    ~/bootstreep-dashboard/      – Desktop-Quellcode"
-    echo ""
-    echo "  AI Agent (Telegram):"
-    echo "    nano ~/ai-agent/.env       – Token eintragen"
-    echo "    sudo systemctl start ai-agent"
-    echo ""
-    echo "  Logs:"
-    echo "    ~/bootstrap.log            – Vollständiges Setup-Log"
-    echo "    ~/.bootstrap-progress      – Fortschritts-Marker"
-    echo ""
-    echo "───────────────────────────────────────────────────"
+    echo "Pi-hole Pass: $PIHOLE_PASS"
+    echo "Scripts: ~/scripts/"
+    echo "Logs: ~/bootstrap.log"
 }
 
 main "$@"
-

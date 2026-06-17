@@ -1,87 +1,81 @@
+#!/usr/bin/env python3
 """
-Bootstreep AI Agent – Server Commands
-=====================================
-Low-Level-Funktionen für SSH-Homelab-Steuerung.
-Wird vom Telegram-Bot verwendet.
+Server-Commands für AI-Agent v3.13.0
+Privacy-First: Lokale Ausführung, keine externen Calls
 """
 
 import subprocess
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv(Path.home() / 'ai-agent' / '.env')
-
-SSH_USER = os.getenv('SSH_USER', 'admin')
-SERVER_IP = os.getenv('SERVER_IP', '192.168.178.20')
-SSH_KEY_PATH = os.getenv('SSH_KEY_PATH', os.path.expanduser('~/.ssh/id_ed25519'))
-
-
-def ssh_run(cmd: str, timeout: int = 30) -> str:
-    """Führt einen Befehl per SSH auf dem Homelab-Server aus."""
-    ssh_cmd = [
-        'ssh', '-i', SSH_KEY_PATH,
-        '-o', 'StrictHostKeyChecking=accept-new',
-        '-o', 'ConnectTimeout=5',
-        f'{SSH_USER}@{SERVER_IP}',
-        cmd
-    ]
+def run_local(cmd: list, timeout: int = 30) -> tuple:
+    ALLOWED = {"docker", "systemctl", "ufw", "fail2ban-client", "ls", "cat", "df", "free"}
+    if not cmd or cmd[0] not in ALLOWED:
+        return False, f"Nicht erlaubt: {cmd[0] if cmd else ''}"
     try:
-        result = subprocess.run(
-            ssh_cmd, capture_output=True, text=True, timeout=timeout
-        )
-        out = result.stdout.strip()
-        err = result.stderr.strip()
-        if result.returncode != 0:
-            return f'Fehler ({result.returncode}): {err[:500]}'
-        return out[:2000] or '✅ OK'
-    except subprocess.TimeoutExpired:
-        return '⏱ Timeout'
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, shell=False)
+        return True, (result.stdout or result.stderr).strip()
     except Exception as e:
-        return f'❌ {e}'
+        return False, str(e)
 
+def run_remote(host: str, user: str, cmd: str, key: str = None) -> tuple:
+    ssh_cmd = [
+        "ssh",
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "BatchMode=yes",
+        f"{user}@{host}",
+        cmd,
+    ]
+    if key:
+        ssh_cmd.insert(2, "-i")
+        ssh_cmd.insert(3, key)
+    try:
+        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30, shell=False)
+        return result.returncode == 0, (result.stdout or result.stderr).strip()
+    except Exception as e:
+        return False, str(e)
 
-def docker_list() -> str:
-    """Listet alle laufenden Container."""
-    return ssh_run("docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'")
+def docker_action(action: str, container: str = None) -> tuple:
+    if container:
+        compose_dir = Path.home() / "docker"
+        for sub in compose_dir.iterdir():
+            if not sub.is_dir():
+                continue
+            compose_file = sub / "compose.yml"
+            if not compose_file.exists():
+                continue
+            check = subprocess.run(
+                ["docker", "ps", "--filter", f"name={container}", "--format", "{{.Names}}"],
+                capture_output=True, text=True, shell=False
+            )
+            if container in check.stdout:
+                cmd = ["docker", "compose", "-f", str(compose_file)]
+                if action == "up":
+                    cmd.append("up"); cmd.append("-d")
+                elif action == "down":
+                    cmd.append("down")
+                elif action == "restart":
+                    cmd.append("restart")
+                elif action == "logs":
+                    cmd.extend(["logs", "--tail", "50"])
+                else:
+                    return False, f"Unbekannte Aktion: {action}"
+                result = subprocess.run(cmd, capture_output=True, text=True, shell=False)
+                return result.returncode == 0, (result.stdout or result.stderr).strip()
+        return False, f"Container nicht gefunden: {container}"
+    else:
+        cmd = ["docker", action]
+        result = subprocess.run(cmd, capture_output=True, text=True, shell=False)
+        return result.returncode == 0, (result.stdout or result.stderr).strip()
 
-
-def docker_restart(name: str) -> str:
-    """Startet einen Container neu."""
-    return ssh_run(f'docker restart {name}')
-
-
-def docker_logs(name: str, lines: int = 30) -> str:
-    """Zeigt die letzten Logs eines Containers."""
-    return ssh_run(f'docker logs --tail {lines} {name} 2>&1')
-
-
-def system_status() -> dict:
-    """Gibt System-Informationen als Dict zurück."""
-    cpu = ssh_run("top -bn1 | awk '/Cpu/{print $2}'")
-    mem = ssh_run("free -h | awk '/^Mem:/{print $3\"/\"$2}'")
-    disk = ssh_run("df -h / | awk 'NR==2{print $3\"/\"$2}'")
-    uptime = ssh_run('uptime -p')
-    docker = ssh_run("docker ps --format '{{.Names}}' | paste -sd ','")
-    return {
-        'cpu': cpu,
-        'memory': mem,
-        'disk': disk,
-        'uptime': uptime,
-        'docker_containers': docker
-    }
-
-
-def update_all() -> str:
-    """Führt Update-All Script aus."""
-    return ssh_run('bash ~/scripts/update-all.sh', timeout=120)
-
-
-def backup_all() -> str:
-    """Führt Backup-Script aus."""
-    return ssh_run('bash ~/scripts/backup-all.sh', timeout=120)
-
-
-def health_check() -> str:
-    """Führt Health-Check aus."""
-    return ssh_run('bash ~/scripts/health-check.sh')
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: server_commands.py <action> [container]")
+        sys.exit(1)
+    action = sys.argv[1]
+    container = sys.argv[2] if len(sys.argv) > 2 else None
+    ok, out = docker_action(action, container)
+    print(out)
+    sys.exit(0 if ok else 1)

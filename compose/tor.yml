@@ -1,29 +1,30 @@
+---
+# Tor SOCKS5-Proxy (nur lokal erreichbar – Privacy)
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: ["/tmp"]
+  networks: [homelab]
+
 services:
   tor:
+    <<: *common
     image: peterdavehello/tor-socks-proxy:latest
     container_name: tor
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "127.0.0.1:9050:9150"
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9150"]
-      interval: 30s
+      interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 20s
     logging:
       driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
+      options: {max-size: "5m", max-file: "3"}
 
 networks:
   homelab:
     external: true
-

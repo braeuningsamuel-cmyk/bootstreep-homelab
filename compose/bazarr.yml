@@ -1,12 +1,17 @@
+---
+# Bazarr – Untertitel-Management
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [homelab]
+
 services:
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest
+    <<: *common
+    image: lscr.io/linuxserver/bazarr:1.5.1
     container_name: bazarr
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     ports:
       - "6767:6767"
     volumes:
@@ -19,17 +24,9 @@ services:
       - TZ=${TIMEZONE:-Europe/Berlin}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6767"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - homelab
 
 volumes:
   bazarr_config:
@@ -37,4 +34,3 @@ volumes:
 networks:
   homelab:
     external: true
-

@@ -1,43 +1,28 @@
 #!/bin/bash
-# Bootstreep Homelab – Cron-Jobs einrichten
+# Cron-Jobs einrichten
 set -euo pipefail
 
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-log()  { echo -e "${GREEN}[✓]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-info() { echo -e "${CYAN}[i]${NC} $1"; }
+crontab -l > "$HOME/.crontab.bak" 2>/dev/null || true
 
-info "Cron-Jobs für Homelab-Wartung einrichten..."
+echo "Aktuelle Crontab:"
+crontab -l 2>/dev/null || echo "(leer)"
 echo ""
 
-# Wöchentliches Update (Sonntag 3 Uhr)
-(crontab -l 2>/dev/null | grep -q "update-all.sh") && warn "Cron: update-all.sh bereits vorhanden." || {
-    (crontab -l 2>/dev/null; echo "0 3 * * 0 $HOME/scripts/update-all.sh >/dev/null 2>&1") | crontab -
-    log "Cron: update-all.sh → So 3:00 Uhr"
-}
+(crontab -l 2>/dev/null; \
+ echo "0 3 * * 0 $SCRIPT_DIR/update-all.sh >/dev/null 2>&1"; \
+ echo "0 4 * * 0 $SCRIPT_DIR/backup-all.sh >/dev/null 2>&1"; \
+ echo "*/30 * * * * $SCRIPT_DIR/health-check.sh >/dev/null 2>&1"; \
+ echo "0 5 * * 0 $HOME_DIR/scripts/docker-cleanup.sh >/dev/null 2>&1"; \
+ echo "0 2 * * 6 $HOME_DIR/scripts/sanitize-logs.sh >/dev/null 2>&1") | crontab -
 
-# Wöchentliches Backup (Sonntag 4 Uhr)
-(crontab -l 2>/dev/null | grep -q "backup-all.sh") && warn "Cron: backup-all.sh bereits vorhanden." || {
-    (crontab -l 2>/dev/null; echo "0 4 * * 0 $HOME/scripts/backup-all.sh >/dev/null 2>&1") | crontab -
-    log "Cron: backup-all.sh → So 4:00 Uhr"
-}
-
-# Health-Check alle 30 Minuten
-(crontab -l 2>/dev/null | grep -q "health-check.sh") && warn "Cron: health-check.sh bereits vorhanden." || {
-    (crontab -l 2>/dev/null; echo "*/30 * * * * $HOME/scripts/health-check.sh >/dev/null 2>&1") | crontab -
-    log "Cron: health-check.sh → alle 30 Minuten"
-}
-
-# Pi-hole Gravity-Updates (täglich 2 Uhr)
-(crontab -l 2>/dev/null | grep -q "pihole -g") && warn "Cron: Pi-hole gravity bereits vorhanden." || {
-    (crontab -l 2>/dev/null; echo "0 2 * * * docker exec pihole pihole -g >/dev/null 2>&1") | crontab -
-    log "Cron: Pi-hole Gravity → täglich 2:00 Uhr"
-}
-
-echo ""
-log "Aktuelle Crontab:"
+echo "Neue Crontab:"
 crontab -l
+echo ""
+echo "✓ Cron-Jobs eingerichtet:"
+echo "  - Update:     So 3:00"
+echo "  - Backup:     So 4:00"
+echo "  - Healthcheck: alle 30 Min"
+echo "  - Docker Cleanup: So 5:00"
+echo "  - Log-Anonymisierung: Sa 2:00"
