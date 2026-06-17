@@ -1,0 +1,5 @@
+---
+- name: Install Ollama
+  shell: "curl -fsSL https://ollama.com/install.sh | sh"
+  args:
+    creates: /usr/local/bin/ollama

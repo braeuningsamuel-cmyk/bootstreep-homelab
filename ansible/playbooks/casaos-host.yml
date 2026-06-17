@@ -1,0 +1,5 @@
+---
+- name: Configure CasaOS host
+  hosts: all
+  roles:
+    - casaos

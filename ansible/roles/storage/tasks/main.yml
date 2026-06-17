@@ -1,0 +1,4 @@
+---
+- name: Storage mounts (placeholder)
+  debug:
+    msg: "This role is a placeholder for configuring storage mounts. See docs/storage.md for more info."

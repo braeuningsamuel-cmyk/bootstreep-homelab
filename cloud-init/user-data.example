@@ -1,0 +1,35 @@
+#cloud-config
+#
+# Homelab Base: cloud-init user-data
+#
+# This cloud-init configuration performs the initial server provisioning.
+# It creates a user, adds an SSH key, installs necessary packages,
+# and then triggers an Ansible run to complete the setup.
+#
+# How to use:
+# 1. Replace 'your_username' with your desired username.
+# 2. Replace 'ssh-rsa AAAA...' with your public SSH key.
+# 3. Replace 'https://github.com/your-user/homelab-base.git' with your repo URL.
+# 4. Provide this file as user-data to your cloud instance.
+
+# Create a user and set up SSH access
+users:
+  - name: your_username
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa AAAA...
+
+# Update packages and install Ansible
+package_update: true
+package_upgrade: true
+packages:
+  - git
+  - curl
+  - ansible
+
+# Run the bootstrap script from the cloned repository
+runcmd:
+  - [ sh, -c, "git clone https://github.com/andresvidoza/homelab-base.git /opt/homelab-base" ]
+  - [ sh, -c, "cd /opt/homelab-base && ./bootstrap/first-boot.sh" ]

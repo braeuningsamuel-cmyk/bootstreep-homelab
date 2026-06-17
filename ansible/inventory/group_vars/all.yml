@@ -1,0 +1,11 @@
+---
+# Variables for all hosts
+
+# User to create on the servers
+ansible_user: your_username
+
+# Path to your public SSH key
+ssh_public_key: "ssh-rsa AAAA..."
+
+# Domain for reverse proxy
+domain_name: your.domain.com

@@ -1,0 +1,4 @@
+---
+# Variables for CasaOS hosts
+
+casaos_install_script_url: "https://get.casaos.io"

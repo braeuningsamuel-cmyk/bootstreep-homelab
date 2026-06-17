@@ -1,0 +1,20 @@
+---
+- name: Create n8n compose directory
+  file:
+    path: "/opt/homelab-base/compose/n8n"
+    state: directory
+
+- name: Copy n8n docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "/opt/homelab-base/compose/n8n/docker-compose.yml"
+
+- name: Copy n8n .env file
+  template:
+    src: .env.j2
+    dest: "/opt/homelab-base/compose/n8n/.env"
+
+- name: Start n8n service
+  community.docker.docker_compose:
+    project_src: "/opt/homelab-base/compose/n8n"
+    state: present

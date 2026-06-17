@@ -1,0 +1,34 @@
+---
+- name: Apply base configuration to all hosts
+  hosts: all
+  roles:
+    - common
+    - ssh
+    - docker
+    - tailscale
+
+- name: Configure AI hosts
+  hosts: ai_hosts
+  roles:
+    - ollama
+    - openwebui
+
+- name: Configure VM hosts
+  hosts: vm_hosts
+  roles:
+    - kvm
+
+- name: Configure CasaOS hosts
+  hosts: casaos_hosts
+  roles:
+    - casaos
+
+- name: Configure storage for all hosts
+  hosts: all
+  roles:
+    - storage
+
+- name: Configure reverse proxy for all hosts
+  hosts: all
+  roles:
+    - reverse_proxy

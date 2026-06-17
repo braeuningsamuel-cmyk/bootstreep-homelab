@@ -1,0 +1,20 @@
+---
+- name: Create Caddy compose directory
+  file:
+    path: "/opt/homelab-base/compose/proxy"
+    state: directory
+
+- name: Copy Caddyfile
+  template:
+    src: Caddyfile.j2
+    dest: "/opt/homelab-base/compose/proxy/Caddyfile"
+
+- name: Copy Caddy docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "/opt/homelab-base/compose/proxy/docker-compose.yml"
+
+- name: Start Caddy service
+  community.docker.docker_compose:
+    project_src: "/opt/homelab-base/compose/proxy"
+    state: present

@@ -1,0 +1,4 @@
+---
+# Variables for AI hosts
+
+ollama_version: "0.1.25"

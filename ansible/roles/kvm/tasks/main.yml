@@ -1,0 +1,15 @@
+---
+- name: Install KVM packages
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - virtinst
+      - bridge-utils
+    state: present
+
+- name: Enable and start libvirt service
+  service:
+    name: libvirtd
+    state: started
+    enabled: yes

@@ -1,0 +1,24 @@
+---
+- name: Install OpenSSH Server
+  apt:
+    name: openssh-server
+    state: present
+
+- name: Ensure sshd is running and enabled
+  service:
+    name: sshd
+    state: started
+    enabled: yes
+
+- name: Create user for Ansible
+  user:
+    name: "{{ ansible_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: yes
+
+- name: Add authorized key for user
+  authorized_key:
+    user: "{{ ansible_user }}"
+    key: "{{ ssh_public_key }}"
+    state: present

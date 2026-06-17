@@ -1,0 +1,20 @@
+---
+- name: Create Open WebUI compose directory
+  file:
+    path: "/opt/homelab-base/compose/openwebui"
+    state: directory
+
+- name: Copy Open WebUI docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "/opt/homelab-base/compose/openwebui/docker-compose.yml"
+
+- name: Copy Open WebUI .env file
+  template:
+    src: .env.j2
+    dest: "/opt/homelab-base/compose/openwebui/.env"
+
+- name: Start Open WebUI service
+  community.docker.docker_compose:
+    project_src: "/opt/homelab-base/compose/openwebui"
+    state: present

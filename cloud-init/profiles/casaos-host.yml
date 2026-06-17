@@ -1,0 +1,10 @@
+#cloud-config
+# casaos-host.yml: Provisions a CasaOS host.
+
+ansible:
+  install_method: "pip"
+  package_name: "ansible"
+  pull:
+    url: "https://github.com/your-user/homelab-base.git"
+    playbook_name: "ansible/playbooks/casaos-host.yml"
+    checkout: "main"

@@ -1,0 +1,20 @@
+---
+- name: Add Tailscale GPG key
+  apt_key:
+    url: https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_distribution_release }}.gpg
+    state: present
+
+- name: Add Tailscale repository
+  apt_repository:
+    repo: deb https://pkgs.tailscale.com/stable/ubuntu {{ ansible_distribution_release }} main
+    state: present
+
+- name: Install Tailscale
+  apt:
+    name: tailscale
+    state: present
+    update_cache: yes
+
+- name: Connect to Tailscale
+  shell: "tailscale up --authkey {{ ts_auth_key }}"
+  when: ts_auth_key is defined and ts_auth_key != ""

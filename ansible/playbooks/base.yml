@@ -1,0 +1,8 @@
+---
+- name: Apply base configuration
+  hosts: all
+  roles:
+    - common
+    - ssh
+    - docker
+    - tailscale

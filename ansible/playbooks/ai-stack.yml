@@ -1,0 +1,6 @@
+---
+- name: Configure AI stack
+  hosts: all
+  roles:
+    - ollama
+    - openwebui

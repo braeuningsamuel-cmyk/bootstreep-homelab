@@ -1,0 +1,5 @@
+---
+- name: Install CasaOS
+  shell: "curl -fsSL {{ casaos_install_script_url }} | sudo bash"
+  args:
+    creates: /usr/local/bin/casaos

@@ -1,0 +1,4 @@
+---
+# Variables for VM hosts
+
+win11_iso_path: /var/lib/libvirt/images/win11.iso
