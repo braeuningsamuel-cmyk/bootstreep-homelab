@@ -174,7 +174,7 @@ services:
 
   sabnzbd:
     <<: *common
-    image: lscr.io/linuxserver/sabnzbd:4.3.2
+    image: lscr.io/linuxserver/sabnzbd:5.0.4
     container_name: sabnzbd
     ports:
       - "8085:8080"
