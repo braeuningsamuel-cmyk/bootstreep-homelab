@@ -13,9 +13,9 @@ We will acknowledge within 48 hours and provide a fix timeline.
 
 | Version | Supported |
 |---------|-----------|
-| 4.0.x   | ✅ Yes |
-| 3.13.x  | ⚠️ Critical fixes only |
-| < 3.13  | ❌ No |
+| 4.1.x   | ✅ Yes |
+| 4.0.x   | ⚠️ Critical fixes only |
+| < 4.0   | ❌ No |
 
 ## Best Practices
 

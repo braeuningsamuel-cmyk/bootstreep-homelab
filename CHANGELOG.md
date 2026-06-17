@@ -1,5 +1,37 @@
 # Changelog
 
+## v4.1.0 (2026-06-17) – DevSecOps CI + Phase1 Audit-Fixes
+
+### Security & Privacy
+- **H10**: backup-all.sh: `ENCRYPT=true` als Default (verschlüsselte Backups)
+- **H8**: Telegram-Bot: `sys.exit(1)` wenn `ALLOWED_CHAT_IDS` leer
+- **P3**: Open WebUI: `ANONYMOUS_USAGE_STATS=false` (merged + compose)
+- **P8**: n8n: `N8N_METRICS=false` (merged + compose)
+- **P10**: setup-cron.sh: `$HOME_DIR` → `$SCRIPT_DIR` (undefinierte Variable gefixt)
+- **gitleaks**: CI: `continue-on-error` entfernt (Secrets brechen jetzt den Build)
+
+### CI/CD (Phase 2)
+- **ci.yml**: 8 Jobs – ShellCheck, yamllint, ruff, markdownlint, gitleaks, Compose Validate, Pinned Tags, Env Consistency
+- **security-audit.yml**: Wöchentlicher Sicherheitslauf (Trivy, Gitleaks Full History, Image-Check)
+- **dependabot.yml**: Docker-Ecosystem hinzugefügt
+- **CODEOWNERS**: Automatische Review-Zuweisung
+- **CONTRIBUTING.md**: Stark erweitert mit Code-Style-Guide + CI-Referenz
+- **SECURITY.md**: Auf v4.1.x aktualisiert
+
+### Bugfixes
+- **M1**: bootstrap.sh: `/home/$USER` → `$HOME` (Caddyfile-Heredoc)
+- **M2**: Crontab-Idempotenz: `grep -q` Guards vor crontab-Einträgen
+- **M4**: Watchtower: `WATCHTOWER_NO_STARTUP_UPDATE=true`
+- **M5**: Caddy-Volume: Absoluter Pfad `$HOME/docker/caddy/Caddyfile`
+
+### Performance
+- **Perf2**: Healthcheck `interval: 30s` → `60s` in 8 Compose-Dateien
+- **Perf5**: Unbound Cache: msg-cache 64→128m, rrset-cache 128→256m
+
+### AI Integration
+- **Telegram-Bot**: `/ask`-Befehl via LiteLLM statt direkter Ollama-API
+- **.env.example**: `LITELLM_URL`/`LITELLM_API_KEY`/`LITELLM_MODEL` statt `OLLAMA_URL`/`OLLAMA_MODEL`
+
 ## v4.0.0 (2026-06-17) – Enterprise Audit + V4 Architecture
 
 ### Critical Fixes

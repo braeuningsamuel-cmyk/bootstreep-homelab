@@ -1,0 +1,11 @@
+# Code Owners – reviewed by repo owner
+* @braeuningsamuel-cmyk
+
+# CI/CD changes need extra review
+.github/workflows/*.yml @braeuningsamuel-cmyk
+.github/dependabot.yml @braeuningsamuel-cmyk
+
+# Security-sensitive files
+SECURITY.md @braeuningsamuel-cmyk
+ai-agent/telegram-bot.py @braeuningsamuel-cmyk
+scripts/backup-all.sh @braeuningsamuel-cmyk

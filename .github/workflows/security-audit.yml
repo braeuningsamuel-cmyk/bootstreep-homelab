@@ -1,0 +1,63 @@
+---
+name: Security Audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # Jeden Montag 6:00 UTC
+  workflow_dispatch:
+
+jobs:
+  trivy-scan:
+    name: Trivy FS Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+  gitleaks-deep:
+    name: Gitleaks Full History
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks full
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          scan-path: .
+          extra-args: --verbose
+
+  outdated-images:
+    name: Check Image Updates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract and check pinned tags
+        run: |
+          pip install requests
+          python3 -c "
+import re, os, requests, sys
+
+# Parse all compose files for image tags
+for root, dirs, files in os.walk('.'):
+    for f in files:
+        if not f.endswith('.yml'):
+            continue
+        path = os.path.join(root, f)
+        with open(path) as fh:
+            for line in fh:
+                m = re.match(r'\\s*image:\\s+(\\S+)', line)
+                if m:
+                    print(m.group(1))
+"

@@ -19,6 +19,12 @@ updates:
       interval: "weekly"
     labels: ["dependencies", "python"]
 
+  - package-ecosystem: "docker"
+    directory: "/compose"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "docker"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
