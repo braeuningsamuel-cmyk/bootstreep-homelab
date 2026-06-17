@@ -10,14 +10,15 @@ x-common: &common
 services:
   hermes:
     <<: *common
-    image: node:22-alpine
+    build:
+      context: ./hermes
+      dockerfile: Dockerfile
+    image: hermes:latest
     container_name: hermes
     ports:
       - "3000:3000"
-    working_dir: /app
     volumes:
       - ~/hermes:/app
-    command: sh -c "if [ ! -d node_modules ]; then npm install; fi; npm start"
     depends_on:
       ollama: {condition: service_healthy}
     healthcheck:

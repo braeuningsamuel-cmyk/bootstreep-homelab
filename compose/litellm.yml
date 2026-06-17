@@ -20,7 +20,8 @@ services:
       - ./litellm/config.yml:/app/config.yml:ro
     environment:
       - DATABASE_URL=sqlite:///app/data/litellm.db
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-bootstreep-master}
+      # SECURITY: LITELLM_MASTER_KEY must be set in .env (not a weak default)
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:?Error: LITELLM_MASTER_KEY not set in .env}
       - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-}
     command:
       - '--config=/app/config.yml'

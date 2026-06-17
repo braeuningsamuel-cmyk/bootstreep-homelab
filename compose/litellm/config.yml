@@ -20,6 +20,7 @@ model_list:
 litellm_settings:
   drop_params: true
   set_verbose: false
-  default_key: sk-bootstreep
+  # SECURITY: default_key must be set via LITELLM_MASTER_KEY env var, not hardcoded
+  # Users should provide a strong API key via environment
   num_retries: 2
   request_timeout: 300

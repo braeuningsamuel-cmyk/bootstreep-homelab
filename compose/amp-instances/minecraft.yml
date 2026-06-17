@@ -24,7 +24,8 @@ services:
       - OPS=admin
       - SERVER_NAME=Bootstreep-MC
       - MAX_PLAYERS=20
-      - RCON_PASSWORD=${RCON_PASSWORD:-changeme}
+      # SECURITY: RCON_PASSWORD must be set in .env (not "changeme")
+      - RCON_PASSWORD=${RCON_PASSWORD:?Error: RCON_PASSWORD not set in .env}
       - RCON_PORT=25575
     volumes:
       - minecraft_data:/data

@@ -57,10 +57,19 @@ def get_stocks() -> str:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=10) as r:
                 data = json.loads(r.read())
-            meta = data["chart"]["result"][0]["meta"]
-            price = meta["regularMarketPrice"]
+            meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
+            if not meta:
+                lines.append(f"  ⚠️ {sym}: Keine Daten")
+                continue
+            price = meta.get("regularMarketPrice")
+            if price is None:
+                lines.append(f"  ⚠️ {sym}: Preis nicht verfügbar")
+                continue
             prev = meta.get("chartPreviousClose", price)
-            change = ((price - prev) / prev) * 100
+            if prev and price:
+                change = ((price - prev) / prev) * 100
+            else:
+                change = 0
             emoji = "🟢" if change >= 0 else "🔴"
             lines.append(f"  {emoji} {sym}: ${price:.2f} ({change:+.2f}%)")
         except Exception as e:
@@ -84,9 +93,12 @@ def get_news() -> str:
             ns = {"atom": "http://www.w3.org/2005/Atom"}
             items = root.findall(".//item") or root.findall(".//atom:entry", ns)
             for item in items[:2]:
-                title = (item.find("title") or item.find("atom:title", ns)).text
-                title = title.strip()[:80]
-                lines.append(f"  • {title}")
+                title_elem = item.find("title")
+                if title_elem is None:
+                    title_elem = item.find("atom:title", ns)
+                if title_elem is not None and title_elem.text:
+                    title = title_elem.text.strip()[:80]
+                    lines.append(f"  • {title}")
         except Exception:
             continue
     return "\n".join(lines)

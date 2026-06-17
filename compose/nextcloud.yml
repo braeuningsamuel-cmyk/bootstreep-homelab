@@ -18,6 +18,11 @@ services:
       - "9443:8443"
     volumes:
       - /opt/nextcloud-data:/var/lib/docker/volumes/nextcloud-aio
+      # ⚠️ SECURITY NOTE: NextCloud AIO requires Docker socket access for container management
+      # This is a known security risk. For production, consider:
+      # 1. Restricting to read-only: /var/run/docker.sock:/var/run/docker.sock:ro
+      # 2. Using AppArmor profile to limit container capabilities
+      # 3. Running Nextcloud in standalone mode without AIO
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]

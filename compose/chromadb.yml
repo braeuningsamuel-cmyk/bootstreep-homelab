@@ -21,7 +21,8 @@ services:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
       - ANONYMIZED_TELEMETRY=FALSE
-      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_API_KEY:-}
+      # SECURITY: CHROMA_API_KEY should be set in .env (required for authentication)
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_API_KEY:?Error: CHROMA_API_KEY not set in .env}
       - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token_authn.TokenAuthCredentialsProvider
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
