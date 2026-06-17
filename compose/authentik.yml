@@ -21,7 +21,7 @@ services:
       - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRES_PASSWORD:?}
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "authentik"]
-      interval: 30s
+      interval: 60s
       timeout: 5s
       retries: 5
 
@@ -33,7 +33,7 @@ services:
       - authentik_redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
+      interval: 60s
       timeout: 5s
       retries: 3
 

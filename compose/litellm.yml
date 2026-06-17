@@ -28,7 +28,7 @@ services:
       - '--num_workers=4'
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/readiness"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 5
     depends_on:

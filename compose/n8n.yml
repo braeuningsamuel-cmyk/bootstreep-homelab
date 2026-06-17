@@ -20,6 +20,7 @@ services:
       - N8N_HOST=localhost
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
+      - N8N_METRICS=false
       - EXECUTIONS_DATA_PRUNE=true
       - EXECUTIONS_DATA_MAX_AGE=168
     healthcheck:

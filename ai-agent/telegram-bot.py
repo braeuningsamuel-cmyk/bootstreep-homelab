@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Bootstreep AI Agent – Telegram Bot v3.13.0
-Privacy-First: lokale Ollama, command whitelist, shell=False
+Bootstreep AI Agent – Telegram Bot v4.0.0
+Privacy-First: lokale KI via LiteLLM, command whitelist, shell=False
 """
 
-import asyncio
-import json
 import logging
 import os
 import subprocess
 import sys
 from pathlib import Path
+
+import requests
 
 try:
     from dotenv import load_dotenv
@@ -44,7 +44,8 @@ if not TOKEN:
     sys.exit(1)
 
 if not ALLOWED_CHATS:
-    print("WARNUNG: ALLOWED_CHAT_IDS ist leer – Bot reagiert auf NIEMANDEN!")
+    print("FEHLER: ALLOWED_CHAT_IDS ist leer – Bot würde auf NIEMANDEN reagieren!")
+    sys.exit(1)
 
 ALLOWED_CMDS = {
     "docker", "systemctl", "ufw", "fail2ban-client",
@@ -173,19 +174,28 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     question = " ".join(context.args)
     await update.message.reply_text("🤔 Denke nach...")
-    model = os.getenv("OLLAMA_MODEL", "mistral:7b")
-    ollama_url = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-    ok, out = run_cmd([
-        "curl", "-s", "-m", "120",
-        f"{ollama_url}/api/generate",
-        "-d", f'{{"model":"{model}","prompt":"{question}","stream":false}}'
-    ], timeout=130)
+    litellm_url = os.getenv("LITELLM_URL", "http://127.0.0.1:4000")
+    litellm_key = os.getenv("LITELLM_API_KEY", "sk-bootstreep")
+    model = os.getenv("LITELLM_MODEL", "mistral")
     try:
-        data = json.loads(out)
-        answer = data.get("response", "Keine Antwort")
+        resp = requests.post(
+            f"{litellm_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {litellm_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": question}],
+                "stream": False,
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        answer = resp.json()["choices"][0]["message"]["content"]
         await update.message.reply_text(f"🤖 {answer[:3500]}")
-    except Exception:
-        await update.message.reply_text(f"Fehler: {out[:500]}")
+    except Exception as e:
+        await update.message.reply_text(f"Fehler: {str(e)[:500]}")
 
 async def cmd_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):

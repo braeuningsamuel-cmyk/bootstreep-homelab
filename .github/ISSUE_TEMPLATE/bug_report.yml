@@ -1,0 +1,75 @@
+---
+name: Bug Report
+description: Einen Fehler im Bootstreep Homelab melden
+title: "[Bug] "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: "## 🐛 Bug Report"
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Welche Version des Repos verwendest du?
+      placeholder: "v4.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Komponente
+      description: Welcher Teil ist betroffen?
+      options:
+        - bootstrap.sh
+        - docker-compose-all.yml
+        - compose/*.yml
+        - scripts/
+        - ai-agent/
+        - config/
+        - ansible/
+        - cloud-init/
+        - README / Docs
+        - CI/CD
+        - Anderes
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschreibung
+      description: Was ist passiert? Was sollte stattdessen passieren?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduktion
+      description: Schritte zum Reproduzieren
+      placeholder: |
+        1. `./bootstrap.sh`
+        2. ...
+        3. Fehler
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Output
+      description: Füge relevante Logs oder Fehlermeldungen ein
+      render: shell
+  - type: input
+    id: ubuntu
+    attributes:
+      label: Ubuntu-Version
+      description: "`cat /etc/os-release`"
+      placeholder: "Ubuntu 24.04 LTS"
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy-Check
+      description: Bestätige, dass keine sensiblen Daten im Report sind
+      options:
+        - label: Ich habe keine IPs, Passwörter oder Tokens gepostet
+          required: true

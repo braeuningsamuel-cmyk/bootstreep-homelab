@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-4.0.0-6C5CE7?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/status-enterprise--inspired-00B894?style=for-the-badge" alt="Status">
-  <img src="https://img.shields.io/badge/license-MIT-6C5CE7?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/license-unlicense-6C5CE7?style=for-the-badge" alt="License">
   <br>
   <img src="https://img.shields.io/badge/services-30+-6C5CE7?style=flat-square" alt="Services">
   <img src="https://img.shields.io/badge/security-hardened-00B894?style=flat-square" alt="Security">
@@ -265,5 +265,7 @@ Docker-Fail, Stromausfall, DB-Korruption, DNS-Fail, Internet-Fail
 <p align="center">
   <i>Privacy-First · Local AI · No Telemetry · Enterprise Architecture</i>
   <br><br>
-  <img src="https://img.shields.io/badge/built%20with-%E2%9D%A4%EF%B8%8F%20and%20%F0%9F%96%A5-6C5CE7?style=for-the-badge" alt="Built with love">
+  <a href="http://unlicense.org"><img src="https://img.shields.io/badge/license-public%20domain-6C5CE7?style=for-the-badge" alt="Public Domain"></a>
+  <br><br>
+  <i>Freedom over control · Privacy by design · <a href="http://unlicense.org">Public Domain</a></i>
 </p>

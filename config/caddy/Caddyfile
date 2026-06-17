@@ -48,6 +48,7 @@ http://__SERVER_IP__:80 {
     header /static/* Cache-Control "public, max-age=86400"
     header /assets/* Cache-Control "public, max-age=86400"
 
+    # Wird durch bootstrap.sh via sed ersetzt (__SERVER_IP__, __USER__)
     root * /home/__USER__/bootstreep-dashboard/src
     file_server
 

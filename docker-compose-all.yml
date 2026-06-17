@@ -33,7 +33,7 @@ services:
 
   pihole:
     <<: *common
-    image: pihole/pihole:2024.07.0
+    image: pihole/pihole:2025.03.0
     container_name: pihole
     ports:
       - "53:53/udp"
@@ -101,6 +101,7 @@ services:
       - DO_NOT_TRACK=true
       - ENABLE_TELEMETRY=false
       - SCARF_NO_ANALYTICS=true
+      - ANONYMOUS_USAGE_STATS=false
       - WEBUI_SECRET_KEY=${OPEN_WEBUI_SECRET:-}
       - WEBUI_AUTH=true
     volumes:
@@ -289,6 +290,7 @@ services:
     environment:
       - N8N_HOST=localhost
       - N8N_PROTOCOL=http
+      - N8N_METRICS=false
       - EXECUTIONS_DATA_PRUNE=true
       - EXECUTIONS_DATA_MAX_AGE=168
 
@@ -358,6 +360,7 @@ services:
       - WATCHTOWER_POLL_INTERVAL=86400
       - WATCHTOWER_SCHEDULE=0 0 4 ? * SUN
       - WATCHTOWER_DISABLE_ANALYTICS=true
+      - WATCHTOWER_NO_STARTUP_UPDATE=true
       - WATCHTOWER_TIMEOUT=60s
       - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
 
@@ -392,7 +395,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - $HOME/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     cap_add: [NET_BIND_SERVICE]

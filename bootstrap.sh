@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v3.13.0
+# Bootstreep Homelab Bootstrap v4.0.0
 # Für Ubuntu 24.04 LTS – Privacy-First Homelab in einem Befehl
 #
 # Usage:
@@ -45,7 +45,7 @@ USER="${USER:-$(whoami)}"
 HOME_DIR="${HOME:-/home/$USER}"
 
 exec &> >(tee -a "$LOG_FILE")
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Bootstrap v3.13.0 gestartet"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bootstreep Bootstrap v4.0.0 gestartet"
 
 if [ -z "$PIHOLE_PASS" ]; then
     if command -v openssl &>/dev/null; then
@@ -673,7 +673,7 @@ section_15_dashboard() {
     [ -f ~/docker/caddy/Caddyfile ] && ! grep -q bootstreep-dashboard ~/docker/caddy/Caddyfile && {
         cat > ~/docker/caddy/Caddyfile.new <<EOF
 http://$SERVER_IP:80 {
-    root * /home/$USER/bootstreep-dashboard/src
+    root * $HOME/bootstreep-dashboard/src
     file_server
 }
 
@@ -705,7 +705,9 @@ docker builder prune -af 2>/dev/null || true
 docker system df 2>/dev/null
 CLN
     chmod +x ~/scripts/docker-cleanup.sh
-    (crontab -l 2>/dev/null; echo "0 5 * * 0 $HOME_DIR/scripts/docker-cleanup.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
+    if ! crontab -l 2>/dev/null | grep -q "docker-cleanup.sh"; then
+        (crontab -l 2>/dev/null; echo "0 5 * * 0 $HOME_DIR/scripts/docker-cleanup.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
+    fi
 }
 
 section_17_sanitize_logs() {
@@ -728,7 +730,9 @@ done
 echo "Logs anonymisiert: $(date)"
 SAN
     chmod +x ~/scripts/sanitize-logs.sh
-    (crontab -l 2>/dev/null; echo "0 2 * * 6 $HOME_DIR/scripts/sanitize-logs.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
+    if ! crontab -l 2>/dev/null | grep -q "sanitize-logs.sh"; then
+        (crontab -l 2>/dev/null; echo "0 2 * * 6 $HOME_DIR/scripts/sanitize-logs.sh >/dev/null 2>&1") | crontab - 2>/dev/null || true
+    fi
     log "Log-Anonymisierung eingerichtet (wöchentlich)"
 }
 

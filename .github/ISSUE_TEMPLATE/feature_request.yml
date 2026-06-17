@@ -1,0 +1,44 @@
+---
+name: Feature Request
+description: Neue Funktion oder Verbesserung vorschlagen
+title: "[Feature] "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: "## 💡 Feature Request"
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: Welches Problem soll gelöst werden? Was fehlt dir?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Lösungsvorschlag
+      description: Wie könnte die Lösung aussehen?
+      placeholder: "Ein neuer Docker-Service, ein Script, eine Konfiguration..."
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Betrifft
+      options:
+        - Neuer Service / Container
+        - Script / Tool
+        - Sicherheit / Hardening
+        - Privacy / Telemetrie
+        - Performance
+        - Dokumentation
+        - CI / Infrastruktur
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Zusätzlicher Kontext
+      description: Screenshots, Links, Referenzen

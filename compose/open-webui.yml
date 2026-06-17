@@ -19,6 +19,7 @@ services:
       - DO_NOT_TRACK=true
       - ENABLE_TELEMETRY=false
       - SCARF_NO_ANALYTICS=true
+      - ANONYMOUS_USAGE_STATS=false
       - WEBUI_SECRET_KEY=${OPEN_WEBUI_SECRET:-}
       - WEBUI_AUTH=true
     volumes:

@@ -30,7 +30,7 @@ services:
       - minecraft_data:/data
     healthcheck:
       test: ["CMD", "mc-health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
     logging:
