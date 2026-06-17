@@ -12,10 +12,12 @@ bootstrap.log
 # Secrets
 .env
 .env.local
+*.enc.env
 *.pem
 *.key
 *.p12
 secrets/
+.sops.yaml
 
 # Backups
 backups/

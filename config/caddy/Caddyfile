@@ -1,14 +1,35 @@
-# Caddyfile – Bootstreep Homelab v3.13.0
-# Security Headers, HSTS, CSP aktiviert
+# Caddyfile – Bootstreep Homelab v4.0
+# Security Headers, HSTS, CSP, Rate Limiting, Request Logging
 
 {
     admin off
     auto_https off
     email {$LETSENCRYPT_EMAIL:admin@example.com}
+    servers {
+        trusted_proxies 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+    }
+}
+
+# ─── Request Logging ───────────────────────────────────────────────────
+log {
+    output file /var/log/caddy/access.log {
+        roll_size 10mb
+        roll_keep 5
+    }
+    format json
 }
 
 # ─── LAN (HTTP) ─────────────────────────────────────────────────────────
 http://__SERVER_IP__:80 {
+    # Rate Limiting: 20 req/s pro IP
+    rate_limit {
+        zone lan {
+            key {http.request.remote.host}
+            events 20
+            window 1s
+        }
+    }
+
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Frame-Options "SAMEORIGIN"
@@ -30,6 +51,7 @@ http://__SERVER_IP__:80 {
     root * /home/__USER__/bootstreep-dashboard/src
     file_server
 
+    # ─── Reverse Proxies ───────────────────────────────────────
     reverse_proxy /pihole/* pihole:80
     reverse_proxy /nextcloud/* nextcloud-aio:11000
     reverse_proxy /jellyfin/* jellyfin:8096
@@ -42,10 +64,21 @@ http://__SERVER_IP__:80 {
     reverse_proxy /kuma/* uptime-kuma:3001
     reverse_proxy /webui/* open-webui:8080
     reverse_proxy /hermes/* hermes:3000
-    reverse_proxy /vault/* vaultwarden:80
     reverse_proxy /syncthing/* syncthing:8384
     reverse_proxy /amp/* amp:8080
     reverse_proxy /ollama/* ollama:11434
+    reverse_proxy /vault/* vaultwarden:80
+
+    # Sensible Dienste nur aus LAN
+    route /vault/admin/* {
+        @vault_admin remote_ip 192.168.0.0/16 172.16.0.0/12 10.0.0.0/8
+        handle @vault_admin {
+            reverse_proxy vaultwarden:80
+        }
+        handle {
+            respond 403
+        }
+    }
 }
 
 # ─── HTTPS (für externe Domains) ───────────────────────────────────────

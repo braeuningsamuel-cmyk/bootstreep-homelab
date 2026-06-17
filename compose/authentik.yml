@@ -1,0 +1,108 @@
+---
+# Authentik – SSO für alle Dienste (alternative: einzelne Logins)
+# Bootstreep Homelab v4.0
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [backend]
+
+services:
+  authentik-postgresql:
+    <<: *common
+    image: postgres:16-alpine
+    container_name: authentik-postgresql
+    volumes:
+      - authentik_postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=authentik
+      - POSTGRES_USER=authentik
+      - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRES_PASSWORD:?}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "authentik"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  authentik-redis:
+    <<: *common
+    image: redis:7-alpine
+    container_name: authentik-redis
+    volumes:
+      - authentik_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  authentik-server:
+    <<: *common
+    image: ghcr.io/goauthentik/server:2024.8.3
+    container_name: authentik-server
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9443:9443"
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+    environment:
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgresql
+      - AUTHENTIK_POSTGRESQL__USER=authentik
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRES_PASSWORD:?}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:?}
+      - AUTHENTIK_EMAIL__HOST=${SMTP_HOST:-}
+      - AUTHENTIK_EMAIL__PORT=${SMTP_PORT:-587}
+      - AUTHENTIK_EMAIL__USERNAME=${SMTP_USERNAME:-}
+      - AUTHENTIK_EMAIL__PASSWORD=${SMTP_PASSWORD:-}
+      - AUTHENTIK_EMAIL__USE_TLS=true
+      - AUTHENTIK_EMAIL__FROM=${SMTP_FROM:-authentik@homelab.lan}
+      - AUTHENTIK_LOG_LEVEL=info
+      - AUTHENTIK_DISABLE_STARTUP_ANALYTICS=true
+    command: server
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9000/-/health/"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+
+  authentik-worker:
+    <<: *common
+    image: ghcr.io/goauthentik/server:2024.8.3
+    container_name: authentik-worker
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+    environment:
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-postgresql
+      - AUTHENTIK_POSTGRESQL__USER=authentik
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${AUTHENTIK_POSTGRES_PASSWORD:?}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:?}
+      - AUTHENTIK_LOG_LEVEL=info
+      - AUTHENTIK_DISABLE_STARTUP_ANALYTICS=true
+    command: worker
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
+
+volumes:
+  authentik_postgres:
+  authentik_redis:
+  authentik_media:
+  authentik_templates:
+
+networks:
+  backend:
+    external: true

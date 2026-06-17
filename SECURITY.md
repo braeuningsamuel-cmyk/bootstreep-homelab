@@ -13,9 +13,9 @@ We will acknowledge within 48 hours and provide a fix timeline.
 
 | Version | Supported |
 |---------|-----------|
-| 3.13.x  | ✅ Yes |
-| 3.11.x  | ⚠️ Critical fixes only |
-| < 3.11  | ❌ No |
+| 4.0.x   | ✅ Yes |
+| 3.13.x  | ⚠️ Critical fixes only |
+| < 3.13  | ❌ No |
 
 ## Best Practices
 
@@ -25,11 +25,13 @@ We will acknowledge within 48 hours and provide a fix timeline.
 - ✅ `pre-commit install` für Secret-Scanning (gitleaks)
 - ✅ Regelmäßige Backups: `~/scripts/backup-all.sh`
 - ✅ Updates: `~/scripts/update-all.sh` (Sonntag 3:00)
-- ✅ Fail2Ban aktiv: `sudo fail2ban-client status sshd`
+- ✅ CrowdSec aktiv (optional) oder Fail2Ban
+- ✅ Authentik SSO für alle Web-Dienste (optional)
+- ✅ Rate Limiting in Caddy (20 req/s/IP)
 - ✅ UFW aktiv: `sudo ufw status`
 - ✅ Kernel gehärtet: sysctl (BBR, rp_filter, syncookies, martians)
 
-## Built-in Hardening (v3.13.0)
+## Built-in Hardening (v4.0.0)
 
 - **SSH**: Nur Ed25519, starke Ciphers/MACs/Kex, keine Passwörter, RekeyLimit
 - **UFW**: Nur LAN-Zugriff auf Web-Interfaces, Rate-Limiting

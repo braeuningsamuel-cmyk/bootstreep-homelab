@@ -1,0 +1,43 @@
+---
+# LiteLLM – Unified AI Gateway (vor Ollama, OpenAI-kompatibel)
+# Bootstreep Homelab v4.0
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [backend]
+
+services:
+  litellm:
+    <<: *common
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - litellm_data:/app/data
+      - ./litellm/config.yml:/app/config.yml:ro
+    environment:
+      - DATABASE_URL=sqlite:///app/data/litellm.db
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-bootstreep-master}
+      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-}
+    command:
+      - '--config=/app/config.yml'
+      - '--port=4000'
+      - '--num_workers=4'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  litellm_data:
+
+networks:
+  backend:
+    external: true

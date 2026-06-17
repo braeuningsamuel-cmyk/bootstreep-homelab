@@ -9,7 +9,7 @@
 # How to use:
 # 1. Replace 'your_username' with your desired username.
 # 2. Replace 'ssh-rsa AAAA...' with your public SSH key.
-# 3. Replace 'https://github.com/your-user/homelab-base.git' with your repo URL.
+# 3. Replace 'https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git' with your repo URL.
 # 4. Provide this file as user-data to your cloud instance.
 
 # Create a user and set up SSH access
@@ -31,5 +31,5 @@ packages:
 
 # Run the bootstrap script from the cloned repository
 runcmd:
-  - [ sh, -c, "git clone https://github.com/andresvidoza/homelab-base.git /opt/homelab-base" ]
-  - [ sh, -c, "cd /opt/homelab-base && ./bootstrap/first-boot.sh" ]
+  - [ sh, -c, "git clone https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git /opt/bootstreep" ]
+  - [ sh, -c, "cd /opt/bootstreep && ./bootstrap/first-boot.sh" ]

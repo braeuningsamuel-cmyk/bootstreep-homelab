@@ -5,7 +5,7 @@ x-common: &common
   restart: unless-stopped
   security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
-  networks: [homelab]
+  networks: [backend]
 
 services:
   watchtower:
@@ -20,7 +20,8 @@ services:
       - WATCHTOWER_INCLUDE_STOPPED=false
       - WATCHTOWER_INCLUDE_RESTARTING=false
       - WATCHTOWER_SCHEDULE=0 0 4 ? * SUN
-      - WATCHTOWER_TIMEOUT=60s
+      - WATCHTOWER_TIMEOUT=120s
+      - WATCHTOWER_ROLLING_RESTART=true
       - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
       - WATCHTOWER_DISABLE_ANALYTICS=true
     healthcheck:
@@ -33,5 +34,5 @@ services:
       options: {max-size: "5m", max-file: "3"}
 
 networks:
-  homelab:
+  backend:
     external: true

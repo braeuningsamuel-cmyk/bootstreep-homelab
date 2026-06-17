@@ -1,0 +1,51 @@
+---
+# CrowdSec – WAF + IP Reputation (besser als Fail2Ban allein)
+# Bootstreep Homelab v4.0
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [backend]
+
+services:
+  crowdsec:
+    <<: *common
+    image: crowdsecurity/crowdsec:1.6.3
+    container_name: crowdsec
+    volumes:
+      - crowdsec_data:/var/lib/crowdsec/data
+      - crowdsec_config:/etc/crowdsec
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    environment:
+      - COLLECTIONS=sudo linux sshd traefik http-cve
+      - GID=1000
+      - UID=1000
+    cap_add: [SYS_PTRACE, NET_ADMIN, NET_RAW]
+
+  crowdsec-bouncer:
+    <<: *common
+    image: crowdsecurity/cs-firewall-bouncer:0.0.28
+    container_name: crowdsec-bouncer
+    volumes:
+      - crowdsec_bouncer:/shared
+    environment:
+      - API_URL=http://crowdsec:8080
+      - API_KEY=${CROWDSEC_API_KEY:?}
+      - DISABLE_IPV6=true
+      - BLACKHOLE_MODE=false
+    cap_add: [NET_ADMIN, NET_RAW]
+    depends_on:
+      crowdsec:
+        condition: service_started
+    network_mode: host
+
+volumes:
+  crowdsec_data:
+  crowdsec_config:
+  crowdsec_bouncer:
+
+networks:
+  backend:
+    external: true

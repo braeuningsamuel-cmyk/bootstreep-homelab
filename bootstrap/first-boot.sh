@@ -6,8 +6,8 @@
 
 set -e
 
-REPO_URL="https://github.com/your-user/homelab-base.git"
-REPO_DIR="/opt/homelab-base"
+REPO_URL="https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git"
+REPO_DIR="/opt/bootstreep"
 
 # Run ansible-pull
 ansible-pull -U "$REPO_URL" -d "$REPO_DIR" ansible/site.yml

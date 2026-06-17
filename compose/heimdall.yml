@@ -5,7 +5,7 @@ x-common: &common
   restart: unless-stopped
   security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
-  networks: [homelab]
+  networks: [frontend]
 
 services:
   heimdall:
@@ -31,5 +31,5 @@ volumes:
   heimdall_config:
 
 networks:
-  homelab:
+  frontend:
     external: true

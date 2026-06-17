@@ -1,0 +1,25 @@
+---
+model_list:
+  - model_name: mistral
+    litellm_params:
+      model: ollama/mistral:7b
+      api_base: http://ollama:11434
+  - model_name: llama3.2
+    litellm_params:
+      model: ollama/llama3.2:3b
+      api_base: http://ollama:11434
+  - model_name: deepseek
+    litellm_params:
+      model: ollama/deepseek-coder:6.7b
+      api_base: http://ollama:11434
+  - model_name: phi4
+    litellm_params:
+      model: ollama/phi4:14b
+      api_base: http://ollama:11434
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  default_key: sk-bootstreep
+  num_retries: 2
+  request_timeout: 300

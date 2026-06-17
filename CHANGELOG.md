@@ -1,5 +1,40 @@
 # Changelog
 
+## v4.0.0 (2026-06-17) – Enterprise Audit + V4 Architecture
+
+### Critical Fixes
+- **cloud-init/ ansible/ bootstrap/**: Repo-URLs auf `braeuningsamuel-cmyk/bootstreep-homelab` korrigiert
+- **compose/dns.yml**: Unbound Root-Hints-Volume + benötigte Capabilities hinzugefügt
+- **compose/dns.yml**: Pi-hole Image `2024.07.0` → `2025.03.0`
+- **compose/watchtower.yml**: `WATCHTOWER_ROLLING_RESTART=true` (Container nacheinander updaten)
+
+### Network Isolation (BREAKING)
+- **Neu**: Docker-Netzwerke `frontend` + `backend` statt gemeinsamem `homelab`
+- **caddy.yml**: Brückt zwischen `frontend` (öffentlich) und `backend` (intern)
+- **heimdall.yml**: Nur auf `frontend` (Dashboard)
+- **Alle anderen Services**: Auf `backend` (kein direkter Zugriff von außen)
+- **Caddyfile**: Rate Limiting (20 req/s/IP), Request Logging, LAN-Whitelist
+
+### Infrastructure
+- **compose/monitoring.yml**: Grafana 11 + Prometheus + Loki + Node Exporter + cAdvisor
+- **compose/litellm.yml**: Unified AI Gateway vor Ollama
+- **compose/chromadb.yml**: Vektordatenbank für RAG
+- **compose/authentik.yml**: SSO für alle Dienste
+- **compose/crowdsec.yml**: WAF + IP Reputation (Fail2Ban-Ersatz)
+- **compose/minio.yml**: S3-kompatibler Object Storage
+
+### Backup & Security
+- **scripts/backup-all.sh**: DB-Dumps (Vaultwarden, n8n, Nextcloud PostgreSQL), ZFS Snapshots
+- **scripts/disaster-recovery.sh**: 8 DR-Szenarien mit Recovery-Anleitungen
+- **scripts/decrypt-secrets.sh**: SOPS-.env-Entschlüsselung
+- **ansible/roles/storage/main.yml**: Vollständige ZFS-Rolle (Pool, Datasets, Snapshots, Cron)
+- **.sops.yaml**: SOPS-Konfiguration für verschlüsselte Secrets
+- **ansible/group_vars/all.yml**: Vault-Integration, ZFS-Disk-Variablen
+
+### CI
+- **ci.yml**: gitleaks `continue-on-error` (kein Lizenz-Zwang)
+- **compose/monitoring.yml**: Prometheus + Loki + Promtail + Grafana-Konfigurationen
+
 ## v3.13.0 (2026-06-17) – Privacy-First + Performance Max
 
 ### Privacy (BREAKING)

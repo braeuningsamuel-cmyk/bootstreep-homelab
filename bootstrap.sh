@@ -212,15 +212,17 @@ section_2_docker() {
 DJON
     sudo systemctl daemon-reload
     sudo systemctl restart docker
-    docker network inspect homelab &>/dev/null 2>&1 || docker network create homelab
+    for net in frontend backend; do
+        docker network inspect "$net" &>/dev/null 2>&1 || docker network create "$net"
+    done
 
     # MAC-Adress-Randomisierung für Docker-Netzwerke
-    docker network inspect homelab --format '{{(index .Options 0)}}' 2>/dev/null | grep -q "com.docker.network.driver.mac-address" || true
+    docker network inspect frontend --format '{{(index .Options 0)}}' 2>/dev/null | grep -q "com.docker.network.driver.mac-address" || true
 
     mkdir -p ~/docker
     for d in dns tor websurfx ollama open-webui jellyfin sabnzbd n8n sonarr radarr prowlarr bazarr \
              syncthing nextcloud uptime-kuma caddy hermes heimdall teamspeak amp amp-instances \
-             watchtower vaultwarden; do
+             watchtower vaultwarden monitoring litellm chromadb authentik crowdsec minio; do
         mkdir -p ~/docker/"$d"
     done
 }

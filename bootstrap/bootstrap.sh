@@ -7,8 +7,8 @@
 
 set -e
 
-REPO_URL="https://github.com/andresvidoza/homelab-base.git"
-REPO_DIR="/opt/homelab-base"
+REPO_URL="https://github.com/braeuningsamuel-cmyk/bootstreep-homelab.git"
+REPO_DIR="/opt/bootstreep"
 
 # Update package cache and install dependencies
 sudo apt-get update

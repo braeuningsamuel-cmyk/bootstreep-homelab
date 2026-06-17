@@ -9,7 +9,7 @@ x-common: &common
   cap_drop:
     - ALL
   networks:
-    - homelab
+    - backend
 
 services:
   # ─── DNS (Pi-hole + Unbound mit DoH) ─────────────────────────────────
@@ -303,6 +303,8 @@ services:
 
   heimdall:
     <<: *common
+    networks:
+      - frontend
     image: lscr.io/linuxserver/heimdall:2.5.9
     container_name: heimdall
     ports:
@@ -381,6 +383,9 @@ services:
   # ─── REVERSE PROXY ───────────────────────────────────────────────────
   caddy:
     <<: *common
+    networks:
+      - frontend
+      - backend
     image: caddy:2.8-alpine
     container_name: caddy
     ports:
@@ -422,5 +427,7 @@ volumes:
   caddy_config:
 
 networks:
-  homelab:
+  frontend:
+    external: true
+  backend:
     external: true

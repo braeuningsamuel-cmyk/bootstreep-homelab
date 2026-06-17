@@ -1,11 +1,8 @@
 ---
-# Variables for all hosts
+ansible_user: "{{ vault_ansible_user | default('your_username') }}"
+ssh_public_key: "{{ vault_ssh_public_key | default('ssh-rsa AAAA...') }}"
+domain_name: "{{ vault_domain_name | default('homelab.lan') }}"
 
-# User to create on the servers
-ansible_user: your_username
-
-# Path to your public SSH key
-ssh_public_key: "ssh-rsa AAAA..."
-
-# Domain for reverse proxy
-domain_name: your.domain.com
+zfs_disk1: "{{ vault_zfs_disk1 | default('') }}"
+zfs_disk2: "{{ vault_zfs_disk2 | default('') }}"
+ts_auth_key: "{{ vault_ts_auth_key | default('') }}"

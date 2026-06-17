@@ -1,4 +1,62 @@
 ---
-- name: Storage mounts (placeholder)
-  debug:
-    msg: "This role is a placeholder for configuring storage mounts. See docs/storage.md for more info."
+- name: Install ZFS tools
+  apt:
+    name:
+      - zfsutils-linux
+      - zfs-initramfs
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Load ZFS kernel module
+  modprobe:
+    name: zfs
+    state: present
+
+- name: Enable ZFS monthly scrub timer
+  systemd:
+    name: zfs-scrub-monthly@.timer
+    enabled: yes
+    state: started
+
+- name: Create ZFS pool if not exists (mirror)
+  shell: |
+    zpool import -f bootstreep 2>/dev/null || \
+    zpool create -f \
+      -o ashift=12 \
+      -O atime=off \
+      -O compression=lz4 \
+      -O xattr=sa \
+      -O mountpoint=/bootstreep \
+      bootstreep \
+      mirror /dev/disk/by-id/{{ zfs_disk1 }} /dev/disk/by-id/{{ zfs_disk2 }}
+  args:
+    creates: /bootstreep
+  when: zfs_disk1 is defined and zfs_disk2 is defined
+
+- name: Create ZFS datasets
+  zfs:
+    name: "bootstreep/{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      mountpoint: "/bootstreep/{{ item.name }}"
+      compression: "{{ item.compression | default('lz4') }}"
+      quota: "{{ item.quota | default('none') }}"
+      recordsize: "{{ item.recordsize | default('1M') }}"
+  loop:
+    - { name: docker, recordsize: 64K }
+    - { name: media, recordsize: 1M }
+    - { name: downloads, recordsize: 1M }
+    - { name: nextcloud, recordsize: 16K }
+    - { name: backup, recordsize: 1M }
+
+- name: Schedule ZFS snapshots (daily)
+  cron:
+    name: "zfs-snapshot-{{ item }}"
+    minute: "0"
+    hour: "2"
+    job: "zfs snapshot -r bootstreep/{{ item }}@daily-$(date +\\%Y-\\%m-\\%d) && zfs list -t snapshot -o name -H bootstreep/{{ item }} | head -n -7 | xargs -r zfs destroy"
+  loop:
+    - docker
+    - media
+    - nextcloud
+    - backup

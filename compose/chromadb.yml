@@ -1,0 +1,37 @@
+---
+# ChromaDB – Vektordatenbank für RAG (Retrieval Augmented Generation)
+# Bootstreep Homelab v4.0
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  networks: [backend]
+
+services:
+  chromadb:
+    <<: *common
+    image: chromadb/chroma:0.5.5
+    container_name: chromadb
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_API_KEY:-}
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token_authn.TokenAuthCredentialsProvider
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  chromadb_data:
+
+networks:
+  backend:
+    external: true
