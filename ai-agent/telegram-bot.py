@@ -16,9 +16,17 @@ try:
     from dotenv import load_dotenv
     from telegram import Update
     from telegram.constants import ParseMode
-    from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+    from telegram.ext import (
+        Application,
+        CommandHandler,
+        ContextTypes,
+        MessageHandler,
+        filters,
+    )
 except ImportError:
-    print("Dependencies fehlen: source ~/ai-agent/venv/bin/activate && pip install -r requirements.txt")
+    print(
+        "Dependencies fehlen: source ~/ai-agent/venv/bin/activate && pip install -r requirements.txt"
+    )
     sys.exit(1)
 
 env_path = Path.home() / "ai-agent" / ".env"
@@ -48,29 +56,47 @@ if not ALLOWED_CHATS:
     sys.exit(1)
 
 ALLOWED_CMDS = {
-    "docker", "systemctl", "ufw", "fail2ban-client",
-    "tail", "cat", "ls", "df", "free", "uptime",
-    "dig", "ping", "curl", "ssh",
+    "docker",
+    "systemctl",
+    "ufw",
+    "fail2ban-client",
+    "tail",
+    "cat",
+    "ls",
+    "df",
+    "free",
+    "uptime",
+    "dig",
+    "ping",
+    "curl",
+    "ssh",
 }
+
 
 def check_auth(update: Update) -> bool:
     if not ALLOWED_CHATS:
         return False
     return update.effective_chat.id in ALLOWED_CHATS
 
+
 def run_cmd(cmd: list, timeout: int = 30) -> tuple:
     if not cmd or cmd[0] not in ALLOWED_CMDS:
         return False, f"Kommando nicht erlaubt: {cmd[0] if cmd else ''}"
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout,
-            check=False, shell=False
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+            shell=False,
         )
         return True, (result.stdout or result.stderr or "(leer)").strip()[:3500]
     except subprocess.TimeoutExpired:
         return False, "Timeout"
     except Exception as e:
         return False, str(e)
+
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
@@ -87,17 +113,26 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN,
     )
 
+
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     ok, out = run_cmd(["bash", str(Path.home() / "scripts" / "health-check.sh")])
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_services(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
-    ok, out = run_cmd(["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"])
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    ok, out = run_cmd(
+        ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"]
+    )
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
@@ -107,11 +142,20 @@ async def cmd_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     container = context.args[0]
     await update.message.reply_text(f"🔄 Neustart: {container}...")
-    ok, out = run_cmd([
-        "docker", "compose", "-f", f"{Path.home()}/docker/{container}/compose.yml",
-        "restart"
-    ], timeout=60)
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    ok, out = run_cmd(
+        [
+            "docker",
+            "compose",
+            "-f",
+            f"{Path.home()}/docker/{container}/compose.yml",
+            "restart",
+        ],
+        timeout=60,
+    )
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
@@ -122,33 +166,50 @@ async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     container = context.args[0]
     lines = context.args[1] if len(context.args) > 1 else "50"
     ok, out = run_cmd(["docker", "logs", "--tail", lines, container])
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     await update.message.reply_text("🔄 Update startet (kann dauern)...")
-    ok, out = run_cmd(["bash", str(Path.home() / "scripts" / "update-all.sh")], timeout=900)
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    ok, out = run_cmd(
+        ["bash", str(Path.home() / "scripts" / "update-all.sh")], timeout=900
+    )
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     await update.message.reply_text("💾 Backup startet...")
-    ok, out = run_cmd(["bash", str(Path.home() / "scripts" / "backup-all.sh")], timeout=900)
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    ok, out = run_cmd(
+        ["bash", str(Path.home() / "scripts" / "backup-all.sh")], timeout=900
+    )
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_health(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     ok, out = run_cmd(["bash", str(Path.home() / "scripts" / "health-check.sh")])
-    await update.message.reply_text(f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(
+        f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN
+    )
+
 
 async def cmd_df(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     ok, out = run_cmd(["df", "-h"])
     await update.message.reply_text(f"```\n{out}\n```", parse_mode=ParseMode.MARKDOWN)
+
 
 async def cmd_network(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
@@ -160,11 +221,13 @@ async def cmd_network(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN,
     )
 
+
 async def cmd_dns(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     ok, out = run_cmd(["bash", str(Path.home() / "scripts" / "dnssec-test.sh")])
     await update.message.reply_text(f"```\n{out}\n```", parse_mode=ParseMode.MARKDOWN)
+
 
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
@@ -197,17 +260,22 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Fehler: {str(e)[:500]}")
 
+
 async def cmd_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     await update.message.reply_text("📰 Briefing wird erstellt...")
-    ok, out = run_cmd(["python3", str(Path.home() / "ai-agent" / "daily.py")], timeout=120)
+    ok, out = run_cmd(
+        ["python3", str(Path.home() / "ai-agent" / "daily.py")], timeout=120
+    )
     await update.message.reply_text(out[:3500])
+
 
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not check_auth(update):
         return
     await update.message.reply_text("❓ Unbekannter Befehl. /start für Hilfe.")
+
 
 def main():
     logger.info("Starting Bot...")
@@ -235,6 +303,7 @@ def main():
 
     logger.info(f"Bot läuft. Erlaubte Chats: {ALLOWED_CHATS}")
     app.run_polling(drop_pending_updates=True)
+
 
 if __name__ == "__main__":
     main()

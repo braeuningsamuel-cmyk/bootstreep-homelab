@@ -79,19 +79,7 @@ jobs:
       - name: Validate compose files
         run: |
           for f in compose/*.yml docker-compose-all.yml; do
-            python3 -c "
-import yaml, sys
-with open('$f') as fh:
-    try:
-        data = yaml.safe_load(fh)
-        if 'services' in data:
-            for name, svc in data['services'].items():
-                assert 'image' in svc or 'build' in svc, f'$f:{name} missing image/build'
-    except Exception as e:
-        print(f'FAIL: $f - {e}')
-        sys.exit(1)
-print(f'OK: $f')
-"
+            python3 -c "import yaml, sys; yaml.safe_load(open('$f')); print('OK: $f')" || { echo "FAIL: $f"; exit 1; }
           done
 
   pinned-tags:
@@ -125,30 +113,4 @@ print(f'OK: $f')
       - uses: actions/checkout@v4
       - name: Check env vars referenced in compose exist in .env.example
         run: |
-          python3 -c "
-import re, os, sys
-# Collect all \${VAR} or \${VAR:-default} from compose files
-refs = set()
-for root, dirs, files in os.walk('.'):
-    for f in files:
-        if not f.endswith('.yml'):
-            continue
-        path = os.path.join(root, f)
-        with open(path) as fh:
-            for m in re.finditer(r'\$\{(\w+)[:-]', fh.read()):
-                refs.add(m.group(1))
-# Read .env.example
-example_path = 'ai-agent/.env.example'
-if not os.path.exists(example_path):
-    print('SKIP: no .env.example found')
-    sys.exit(0)
-with open(example_path) as fh:
-    defined = {line.split('=')[0].strip() for line in fh if '=' in line and not line.startswith('#')}
-missing = refs - defined - {'HOME'}
-if missing:
-    print(f'⚠️  {len(missing)} env vars referenced but not in .env.example:')
-    for v in sorted(missing):
-        print(f'  - {v}')
-    sys.exit(1)
-print(f'✅ All {len(refs)} referenced env vars have defaults')
-"
+          python3 scripts/check-env-vars.py

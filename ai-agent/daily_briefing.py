@@ -7,7 +7,6 @@ Privacy: Alle Daten lokal / über direkte API-Calls (kein Tracking)
 import os
 import sys
 import json
-import smtplib
 import email
 import imaplib
 import urllib.request
@@ -26,6 +25,7 @@ env_path = Path.home() / "ai-agent" / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
+
 def get_weather() -> str:
     api_key = os.getenv("OPENWEATHER_API_KEY")
     lat = os.getenv("LATITUDE", "52.52")
@@ -42,6 +42,7 @@ def get_weather() -> str:
         return f"🌤️ Wetter in {city}: {temp:.1f}°C, {desc}"
     except Exception as e:
         return f"🌤️ Wetter: Fehler ({e})"
+
 
 def get_stocks() -> str:
     symbols = os.getenv("STOCK_SYMBOLS", "").split(",")
@@ -72,9 +73,10 @@ def get_stocks() -> str:
                 change = 0
             emoji = "🟢" if change >= 0 else "🔴"
             lines.append(f"  {emoji} {sym}: ${price:.2f} ({change:+.2f}%)")
-        except Exception as e:
+        except Exception:
             lines.append(f"  ⚠️ {sym}: Fehler")
     return "\n".join(lines)
+
 
 def get_news() -> str:
     feeds_str = os.getenv("NEWS_FEEDS", "")
@@ -103,6 +105,7 @@ def get_news() -> str:
             continue
     return "\n".join(lines)
 
+
 def get_emails() -> str:
     user = os.getenv("GMAIL_USER")
     password = os.getenv("GMAIL_APP_PASSWORD")
@@ -113,7 +116,7 @@ def get_emails() -> str:
         M.login(user, password)
         M.select("INBOX")
         since = (datetime.now() - timedelta(days=1)).strftime("%d-%b-%Y")
-        typ, data = M.search(None, f'(SINCE {since})')
+        typ, data = M.search(None, f"(SINCE {since})")
         ids = data[0].split()
         lines = [f"📧 E-Mails (letzte 24h): {len(ids)}"]
         for num in ids[:3]:
@@ -128,6 +131,7 @@ def get_emails() -> str:
         return "\n".join(lines)
     except Exception as e:
         return f"📧 E-Mail: Fehler ({e})"
+
 
 def get_calendar() -> str:
     url = os.getenv("CALENDAR_ICS_URL")
@@ -155,6 +159,7 @@ def get_calendar() -> str:
     except Exception as e:
         return f"📅 Kalender: Fehler ({e})"
 
+
 def main():
     today = datetime.now().strftime("%d.%m.%Y")
     sections = [
@@ -179,15 +184,18 @@ def main():
             try:
                 text = "\n".join(sections)
                 url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                data = urllib.parse.urlencode({
-                    "chat_id": chat_id,
-                    "text": text[:4000],
-                    "parse_mode": "Markdown",
-                }).encode()
+                data = urllib.parse.urlencode(
+                    {
+                        "chat_id": chat_id,
+                        "text": text[:4000],
+                        "parse_mode": "Markdown",
+                    }
+                ).encode()
                 urllib.request.urlopen(url, data=data, timeout=10)
-                print(f"\n✓ An Telegram gesendet")
+                print("\n✓ An Telegram gesendet")
             except Exception as e:
                 print(f"\n⚠ Telegram-Fehler: {e}")
+
 
 if __name__ == "__main__":
     main()

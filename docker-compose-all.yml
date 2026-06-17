@@ -250,7 +250,7 @@ services:
   # ─── CLOUD & SYNC ────────────────────────────────────────────────────
   nextcloud-aio:
     <<: *common
-    cap_drop: []  # Docker Socket ben�tigt Capabilities
+    cap_drop: []  # Docker Socket benötigt Capabilities
     image: nextcloud/all-in-one:latest
     container_name: nextcloud-aio
     ports:
@@ -336,7 +336,7 @@ services:
 
   amp:
     <<: *common
-    cap_drop: []  # Docker Socket ben�tigt Capabilities
+    cap_drop: []  # Docker Socket benötigt Capabilities
     image: ghcr.io/cubecoders/amp:2.5.1.6
     container_name: amp
     ports:

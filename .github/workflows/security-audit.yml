@@ -43,21 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract and check pinned tags
+      - name: List all pinned images
         run: |
-          pip install requests
-          python3 -c "
-import re, os, requests, sys
-
-# Parse all compose files for image tags
-for root, dirs, files in os.walk('.'):
-    for f in files:
-        if not f.endswith('.yml'):
-            continue
-        path = os.path.join(root, f)
-        with open(path) as fh:
-            for line in fh:
-                m = re.match(r'\\s*image:\\s+(\\S+)', line)
-                if m:
-                    print(m.group(1))
-"
+          grep -rnh "image:" compose/*.yml docker-compose-all.yml | sort
