@@ -164,7 +164,7 @@ async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /logs <container> [anzahl]")
         return
     container = context.args[0]
-    lines = context.args[1] if len(context.args) > 1 else "50"
+    lines = context.args[1] if len(context.args) > 1 and context.args[1].isdigit() else "50"
     ok, out = run_cmd(["docker", "logs", "--tail", lines, container])
     await update.message.reply_text(
         f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN

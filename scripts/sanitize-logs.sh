@@ -10,10 +10,10 @@ for target in $LOG_DIRS; do
         sudo sed -i -E 's/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/x.x.x.x/g' "$target" 2>/dev/null || true
         COUNT=$((COUNT + 1))
     elif [ -d "$target" ]; then
-        find "$target" -name "*.log" -o -name "*.txt" 2>/dev/null | while read -r f; do
+        while IFS= read -r -d '' f; do
             sudo sed -i -E 's/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/x.x.x.x/g' "$f" 2>/dev/null || true
             COUNT=$((COUNT + 1))
-        done
+        done < <(find "$target" \( -name "*.log" -o -name "*.txt" \) -print0 2>/dev/null)
     fi
 done
 

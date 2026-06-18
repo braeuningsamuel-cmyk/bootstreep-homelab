@@ -4,12 +4,13 @@ import re
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
 refs = set()
-for f in Path('.').rglob('*.yml'):
+for f in ROOT.rglob('*.yml'):
     for m in re.finditer(r'\$\{(\w+)[:-]', f.read_text(encoding='utf-8', errors='ignore')):
         refs.add(m.group(1))
 
-example = Path('.env.example')
+example = ROOT / '.env.example'
 if not example.exists():
     print('SKIP: no .env.example found')
     sys.exit(0)

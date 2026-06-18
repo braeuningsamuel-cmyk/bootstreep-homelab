@@ -66,6 +66,11 @@ services:
     deploy:
       resources:
         limits: {memory: 256m, cpus: "0.5"}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9080/ready"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
 
   node-exporter:
     <<: *common
@@ -86,6 +91,11 @@ services:
     deploy:
       resources:
         limits: {memory: 256m, cpus: "0.5"}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9100/metrics"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
     cap_add: [SYS_TIME]
 
   cadvisor:
@@ -103,6 +113,11 @@ services:
     deploy:
       resources:
         limits: {memory: 256m, cpus: "0.5"}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
     devices:
       - /dev/kmsg
     privileged: false

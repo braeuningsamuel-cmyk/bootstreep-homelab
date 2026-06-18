@@ -76,7 +76,7 @@ def docker_action(action: str, container: str = None) -> tuple:
                 text=True,
                 shell=False,
             )
-            if container in check.stdout:
+            if container in check.stdout.splitlines():
                 cmd = ["docker", "compose", "-f", str(compose_file)]
                 if action == "up":
                     cmd.append("up")

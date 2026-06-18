@@ -103,6 +103,11 @@ services:
     deploy:
       resources:
         limits: {memory: 512m, cpus: "1"}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9000/-/health/live/"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
     depends_on:
       authentik-postgresql:
         condition: service_healthy

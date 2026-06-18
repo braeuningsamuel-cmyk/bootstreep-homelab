@@ -25,6 +25,11 @@ services:
     deploy:
       resources:
         limits: {memory: 512m, cpus: "1"}
+    healthcheck:
+      test: ["CMD", "cscli", "metrics"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
     cap_add: [SYS_PTRACE, NET_ADMIN, NET_RAW]
 
   crowdsec-bouncer:
@@ -41,6 +46,11 @@ services:
     deploy:
       resources:
         limits: {memory: 128m, cpus: "0.5"}
+    healthcheck:
+      test: ["CMD-SHELL", "ls /shared/crowdsec-bouncer* 2>/dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
     cap_add: [NET_ADMIN, NET_RAW]
     depends_on:
       crowdsec:

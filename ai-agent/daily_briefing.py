@@ -121,8 +121,8 @@ def get_emails() -> str:
         lines = [f"📧 E-Mails (letzte 24h): {len(ids)}"]
         for num in ids[:3]:
             typ, msg_data = M.fetch(num, "(RFC822.HEADER)")
-            if msg_data and msg_data[0]:
-                raw = msg_data[0][1].decode("utf-8", errors="ignore")
+            if msg_data and msg_data[0] and isinstance(msg_data[0], tuple) and len(msg_data[0]) > 1:
+                raw = msg_data[0][1].decode("utf-8", errors="ignore") if isinstance(msg_data[0][1], bytes) else str(msg_data[0][1])
                 msg = email.message_from_string(raw)
                 subj = msg.get("Subject", "(kein Betreff)")[:60]
                 frm = msg.get("From", "")[:40]
