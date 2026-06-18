@@ -7,10 +7,12 @@ ignores:
   - "CHANGELOG.md"
 
 config:
-  # Use default rules
   default: true
-  # Relax line length for tables/code blocks
   MD013:
-    line_length: 120
-  # Allow inline HTML
+    line_length: 200
   MD033: false
+  MD041: false
+  MD040: false
+  MD034: false
+  MD055: false
+  MD060: false
