@@ -308,7 +308,7 @@ services:
     <<: *common
     networks:
       - frontend
-    image: lscr.io/linuxserver/heimdall:2.5.9
+    image: lscr.io/linuxserver/heimdall:2.7.6
     container_name: heimdall
     ports:
       - "8090:80"
