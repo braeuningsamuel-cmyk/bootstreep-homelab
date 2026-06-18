@@ -15,7 +15,7 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@2.0.0
         with:
@@ -29,7 +29,7 @@ jobs:
     name: YAML Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install yamllint
         run: pip install yamllint==1.35.1
       - name: Run yamllint
@@ -40,7 +40,7 @@ jobs:
     name: Python (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -55,7 +55,7 @@ jobs:
     name: Markdown Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: markdownlint-cli2
         uses: DavidAnson/markdownlint-cli2-action@v23
         with:
@@ -65,7 +65,7 @@ jobs:
     name: Secret Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Run gitleaks
@@ -75,7 +75,7 @@ jobs:
     name: Compose Schema
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Validate compose files
         run: |
           for f in compose/*.yml docker-compose-all.yml; do
@@ -86,7 +86,7 @@ jobs:
     name: Pinned Tags Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check for :latest tags
         run: |
           ALLOWED_LATEST=("unbound" "valheim" "tor" "nextcloud" "hermes")
@@ -110,7 +110,7 @@ jobs:
     name: Env Var Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check env vars referenced in compose exist in .env.example
         run: |
           python3 scripts/check-env-vars.py
