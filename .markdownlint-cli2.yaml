@@ -4,6 +4,7 @@
 
 ignores:
   - "AUDIT_REPORT.md"
+  - "CHANGELOG.md"
 
 config:
   # Use default rules
