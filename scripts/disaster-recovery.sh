@@ -30,8 +30,8 @@ ssd-failure)
     docker network create backend 2>/dev/null || true
     echo ""
     echo "Phase 4: Compose neu deployen"
-    echo "  cd ~/docker && for d in */; do"
-    echo "    (cd \"$d\" && docker compose up -d)"
+    echo '  cd ~/docker && for d in */; do'
+    echo '    (cd "$d" && docker compose up -d)'
     echo "  done"
     echo ""
     echo "Recovery-Zeit: ~2h (abhängig von Download-Geschwindigkeit)"
@@ -53,7 +53,7 @@ compromised)
     echo ""
     echo "Phase 2: Snapshots sichern"
     if command -v zfs &>/dev/null; then
-        zfs snapshot -r bootstreep@forensic-$(date +%Y%m%d)
+        zfs snapshot -r "bootstreep@forensic-$(date +%Y%m%d)"
         echo "  ZFS Snapshots gesichert für Forensik"
     fi
     echo ""
@@ -159,8 +159,8 @@ power-outage)
     echo "  done"
     echo ""
     echo "Phase 3: Services starten"
-    echo "  cd ~/docker && for d in */; do"
-    echo "    (cd \"$d\" && docker compose up -d)"
+    echo '  cd ~/docker && for d in */; do'
+    echo '    (cd "$d" && docker compose up -d)'
     echo "  done"
     echo ""
     echo "Recovery-Zeit: ~15min"

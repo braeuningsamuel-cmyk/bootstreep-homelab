@@ -1,0 +1,15 @@
+---
+# markdownlint-cli2 configuration
+# https://github.com/DavidAnson/markdownlint-cli2
+
+ignores:
+  - "AUDIT_REPORT.md"
+
+config:
+  # Use default rules
+  default: true
+  # Relax line length for tables/code blocks
+  MD013:
+    line_length: 120
+  # Allow inline HTML
+  MD033: false

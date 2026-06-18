@@ -34,7 +34,7 @@ jobs:
         run: pip install yamllint==1.35.1
       - name: Run yamllint
         run: |
-          yamllint -c .yamllint.yaml compose/ docker-compose-all.yml .github/ scripts/*.sh
+          yamllint -c .yamllint.yaml compose/ docker-compose-all.yml .github/
 
   python-lint:
     name: Python (ruff)

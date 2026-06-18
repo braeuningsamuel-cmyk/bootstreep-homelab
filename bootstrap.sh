@@ -108,9 +108,11 @@ pre_flight_checks() {
     local errs=0
     [ "$EUID" -eq 0 ] && { err "Nicht als root"; errs=$((errs + 1)); }
     echo "$SERVER_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || { err "SERVER_IP ungültig"; errs=$((errs + 1)); }
-    local ram=$(free -m 2>/dev/null | awk '/^Mem:/ {print $2}')
+    local ram
+    ram=$(free -m 2>/dev/null | awk '/^Mem:/ {print $2}')
     [ -n "$ram" ] && [ "$ram" -lt 4096 ] && warn "Weniger als 4GB RAM"
-    local avail=$(df / --output=avail 2>/dev/null | tail -1)
+    local avail
+    avail=$(df / --output=avail 2>/dev/null | tail -1)
     [ -n "$avail" ] && [ "$avail" -lt 20971520 ] && warn "Weniger als 20GB frei"
     [ "$errs" -gt 0 ] && die "Pre-Flight fehlgeschlagen"
     log "Pre-Flight OK"
@@ -626,6 +628,7 @@ section_13_ai_agent() {
     [ -f ai-agent/.env.example ] && [ ! -f ~/ai-agent/.env ] && cp ai-agent/.env.example ~/ai-agent/.env
     if [ ! -d ~/ai-agent/venv ]; then
         python3 -m venv ~/ai-agent/venv
+        # shellcheck source=/dev/null
         source ~/ai-agent/venv/bin/activate
         pip install --upgrade pip
         [ -f ai-agent/requirements.txt ] && pip install -r ai-agent/requirements.txt
