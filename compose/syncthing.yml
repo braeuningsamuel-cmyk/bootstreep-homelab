@@ -21,6 +21,9 @@ services:
       - ~/vault:/var/syncthing/vault
     environment:
       - STGUIADDRESS=0.0.0.0:8384
+    deploy:
+      resources:
+        limits: {memory: 512m, cpus: "1"}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8384/rest/system/status"]
       interval: 60s

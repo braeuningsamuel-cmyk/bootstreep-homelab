@@ -19,6 +19,9 @@ services:
       - POSTGRES_DB=authentik
       - POSTGRES_USER=authentik
       - POSTGRES_PASSWORD=${AUTHENTIK_POSTGRES_PASSWORD:?}
+    deploy:
+      resources:
+        limits: {memory: 512m, cpus: "1"}
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "authentik"]
       interval: 60s
@@ -31,6 +34,9 @@ services:
     container_name: authentik-redis
     volumes:
       - authentik_redis:/data
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 60s
@@ -68,6 +74,9 @@ services:
         condition: service_healthy
       authentik-redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits: {memory: 1g, cpus: "2"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9000/-/health/"]
       interval: 60s
@@ -91,6 +100,9 @@ services:
       - AUTHENTIK_LOG_LEVEL=info
       - AUTHENTIK_DISABLE_STARTUP_ANALYTICS=true
     command: worker
+    deploy:
+      resources:
+        limits: {memory: 512m, cpus: "1"}
     depends_on:
       authentik-postgresql:
         condition: service_healthy

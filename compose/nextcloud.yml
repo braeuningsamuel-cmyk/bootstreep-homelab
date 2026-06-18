@@ -24,6 +24,9 @@ services:
       # 2. Using AppArmor profile to limit container capabilities
       # 3. Running Nextcloud in standalone mode without AIO
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      resources:
+        limits: {memory: 4g, cpus: "4"}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 60s

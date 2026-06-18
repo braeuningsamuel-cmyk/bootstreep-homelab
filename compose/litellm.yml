@@ -11,7 +11,7 @@ x-common: &common
 services:
   litellm:
     <<: *common
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:v1.89.2
     container_name: litellm
     ports:
       - "127.0.0.1:4000:4000"
@@ -27,6 +27,9 @@ services:
       - '--config=/app/config.yml'
       - '--port=4000'
       - '--num_workers=4'
+    deploy:
+      resources:
+        limits: {memory: 1g, cpus: "1"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/readiness"]
       interval: 60s

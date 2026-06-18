@@ -24,6 +24,9 @@ services:
       - MINIO_DOMAIN=minio
       - MINIO_BROWSER=on
     command: server /data --console-address ":9001"
+    deploy:
+      resources:
+        limits: {memory: 2g, cpus: "2"}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 60s

@@ -23,6 +23,9 @@ services:
       - AMP_UID=1000
       - AMP_GID=1000
       - AMP_USER=admin
+    deploy:
+      resources:
+        limits: {memory: 2g, cpus: "2"}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 60s

@@ -16,6 +16,9 @@ services:
     container_name: tor
     ports:
       - "127.0.0.1:9050:9150"
+    deploy:
+      resources:
+        limits: {memory: 128m, cpus: "0.5"}
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9150"]
       interval: 60s

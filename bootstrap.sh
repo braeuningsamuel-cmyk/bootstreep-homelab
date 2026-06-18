@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Bootstreep Homelab Bootstrap v4.0.0
+# Bootstreep Homelab Bootstrap v4.1.2
 # Für Ubuntu 24.04 LTS – Privacy-First Homelab in einem Befehl
 #
 # Usage:
@@ -344,8 +344,8 @@ section_4_ssh_harden() {
         sudo systemctl restart ssh
     fi
     mkdir -p ~/.ssh
-    [ -f config/ssh/client-config ] && [ ! -f ~/.ssh/config ] && {
-        cp config/ssh/client-config ~/.ssh/config
+    [ -f "$SCRIPT_DIR/config/ssh/client-config" ] && [ ! -f ~/.ssh/config ] && {
+        cp "$SCRIPT_DIR/config/ssh/client-config" ~/.ssh/config
         sed -i "s/192\.168\.178\.20/$SERVER_IP/g" ~/.ssh/config
         chmod 600 ~/.ssh/config
     }
@@ -401,8 +401,8 @@ section_6_dns() {
     sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     sudo systemctl restart systemd-resolved
     mkdir -p ~/docker/dns/etc-pihole ~/docker/dns/etc-dnsmasq.d
-    cp config/dns/unbound.conf ~/docker/dns/unbound.conf
-    cp compose/dns.yml ~/docker/dns/compose.yml
+    cp "$SCRIPT_DIR/config/dns/unbound.conf" ~/docker/dns/unbound.conf
+    cp "$SCRIPT_DIR/compose/dns.yml" ~/docker/dns/compose.yml
     dc_up dns "DNS"
     local ready=0
     for _ in $(seq 1 60); do
@@ -431,14 +431,14 @@ section_7_privacy() {
     echo "╔══════════════════════════════════════════════════╗"
     echo "║  7.  TOR + WEBSURFX                              ║"
     echo "╚══════════════════════════════════════════════════╝"
-    cp compose/tor.yml ~/docker/tor/compose.yml
+    cp "$SCRIPT_DIR/compose/tor.yml" ~/docker/tor/compose.yml
     dc_up tor "Tor"
     if [ ! -d ~/docker/websurfx/src ]; then
         git clone https://github.com/neon-mmd/websurfx.git ~/docker/websurfx/src
     fi
-    cp config/websurfx/config.lua ~/docker/websurfx/src/config.lua 2>/dev/null || true
+    cp "$SCRIPT_DIR/config/websurfx/config.lua" ~/docker/websurfx/src/config.lua 2>/dev/null || true
     docker image inspect websurfx:local &>/dev/null 2>&1 || docker build -t websurfx:local ~/docker/websurfx/src
-    cp compose/websurfx.yml ~/docker/websurfx/compose.yml
+    cp "$SCRIPT_DIR/compose/websurfx.yml" ~/docker/websurfx/compose.yml
     dc_up websurfx "Websurfx"
 }
 
@@ -448,7 +448,7 @@ section_8_ai() {
     echo "╔══════════════════════════════════════════════════╗"
     echo "║  8.  OLLAMA + KI-CHAT                             ║"
     echo "╚══════════════════════════════════════════════════╝"
-    cp compose/ollama.yml ~/docker/ollama/compose.yml
+    cp "$SCRIPT_DIR/compose/ollama.yml" ~/docker/ollama/compose.yml
     dc_up ollama "Ollama"
     if [ "$SKIP_MODEL_DOWNLOAD" != "true" ]; then
         for _ in $(seq 1 30); do docker exec ollama curl -fs http://localhost:11434/api/tags &>/dev/null && break; sleep 2; done
@@ -467,9 +467,9 @@ section_8_ai() {
         git clone https://github.com/Hermes-Project/hermes.git ~/hermes
         [ -f ~/hermes/.env.example ] && cp ~/hermes/.env.example ~/hermes/.env
     fi
-    cp compose/hermes.yml ~/docker/hermes/compose.yml
+    cp "$SCRIPT_DIR/compose/hermes.yml" ~/docker/hermes/compose.yml
     dc_up hermes "Hermes"
-    cp compose/open-webui.yml ~/docker/open-webui/compose.yml
+    cp "$SCRIPT_DIR/compose/open-webui.yml" ~/docker/open-webui/compose.yml
     dc_up open-webui "Open WebUI"
 }
 
@@ -480,13 +480,13 @@ section_9_media() {
     echo "║  9.  JELLYFIN + ARR-STACK                          ║"
     echo "╚══════════════════════════════════════════════════╝"
     mkdir -p ~/media/{movies,series,music,photos,books} ~/downloads/{complete,incomplete}
-    cp compose/jellyfin.yml ~/docker/jellyfin/compose.yml
+    cp "$SCRIPT_DIR/compose/jellyfin.yml" ~/docker/jellyfin/compose.yml
     dc_up jellyfin "Jellyfin"
-    cp compose/sabnzbd.yml ~/docker/sabnzbd/compose.yml
+    cp "$SCRIPT_DIR/compose/sabnzbd.yml" ~/docker/sabnzbd/compose.yml
     dc_up sabnzbd "SABnzbd"
-    for s in sonarr radarr prowlarr bazarr; do cp "compose/$s.yml" ~/docker/"$s"/compose.yml; done
+    for s in sonarr radarr prowlarr bazarr; do cp "$SCRIPT_DIR/compose/$s.yml" ~/docker/"$s"/compose.yml; done
     dc_up_parallel "sonarr:Sonarr" "radarr:Radarr" "prowlarr:Prowlarr" "bazarr:Bazarr"
-    cp compose/n8n.yml ~/docker/n8n/compose.yml
+    cp "$SCRIPT_DIR/compose/n8n.yml" ~/docker/n8n/compose.yml
     dc_up n8n "n8n"
 }
 
@@ -498,11 +498,11 @@ section_10_cloud() {
     echo "╚══════════════════════════════════════════════════╝"
     sudo mkdir -p /opt/nextcloud-data
     sudo chown -R "$USER":"$USER" /opt/nextcloud-data
-    cp compose/nextcloud.yml ~/docker/nextcloud/compose.yml
+    cp "$SCRIPT_DIR/compose/nextcloud.yml" ~/docker/nextcloud/compose.yml
     dc_up nextcloud "Nextcloud"
     sleep 5
     docker logs nextcloud-aio 2>&1 | grep -i password | head -1 || warn "docker logs nextcloud-aio"
-    cp compose/syncthing.yml ~/docker/syncthing/compose.yml
+    cp "$SCRIPT_DIR/compose/syncthing.yml" ~/docker/syncthing/compose.yml
     dc_up syncthing "Syncthing"
 }
 
@@ -528,9 +528,9 @@ EOSMB
         sudo smbpasswd -a "$USER" 2>/dev/null || warn "Samba-Passwort bereits gesetzt"
         sudo systemctl restart smbd
     fi
-    cp compose/uptime-kuma.yml ~/docker/uptime-kuma/compose.yml
+    cp "$SCRIPT_DIR/compose/uptime-kuma.yml" ~/docker/uptime-kuma/compose.yml
     dc_up uptime-kuma "Uptime Kuma"
-    cp compose/heimdall.yml ~/docker/heimdall/compose.yml
+    cp "$SCRIPT_DIR/compose/heimdall.yml" ~/docker/heimdall/compose.yml
     dc_up heimdall "Heimdall"
 
     # Systemd-Timer statt Cron (genauer, besser isoliert)
@@ -586,18 +586,18 @@ SVC
     systemctl --user daemon-reload
     systemctl --user enable --now bootstreep-update.timer bootstreep-backup.timer bootstreep-health.timer 2>/dev/null || true
 
-    cp compose/teamspeak.yml ~/docker/teamspeak/compose.yml
+    cp "$SCRIPT_DIR/compose/teamspeak.yml" ~/docker/teamspeak/compose.yml
     dc_up teamspeak "TeamSpeak"
-    cp compose/amp.yml ~/docker/amp/compose.yml
+    cp "$SCRIPT_DIR/compose/amp.yml" ~/docker/amp/compose.yml
     dc_up amp "AMP"
     mkdir -p ~/docker/amp-instances
-    cp compose/amp-instances/*.yml ~/docker/amp-instances/ 2>/dev/null || true
+    cp "$SCRIPT_DIR/compose/amp-instances/"*.yml ~/docker/amp-instances/ 2>/dev/null || true
     mkdir -p ~/docker/caddy
-    [ -f config/caddy/Caddyfile ] && {
-        cp config/caddy/Caddyfile ~/docker/caddy/Caddyfile
+    [ -f "$SCRIPT_DIR/config/caddy/Caddyfile" ] && {
+        cp "$SCRIPT_DIR/config/caddy/Caddyfile" ~/docker/caddy/Caddyfile
         sed -i "s/__SERVER_IP__/$SERVER_IP/g; s/__USER__/$USER/g" ~/docker/caddy/Caddyfile
     }
-    cp compose/caddy.yml ~/docker/caddy/compose.yml
+    cp "$SCRIPT_DIR/compose/caddy.yml" ~/docker/caddy/compose.yml
     dc_up caddy "Caddy"
 }
 
@@ -690,10 +690,10 @@ section_16_extras() {
     echo "╔══════════════════════════════════════════════════╗"
     echo "║ 16.  WATCHTOWER + VAULTWARDEN + MONITORING        ║"
     echo "╚══════════════════════════════════════════════════╝"
-    cp compose/watchtower.yml ~/docker/watchtower/compose.yml
+    cp "$SCRIPT_DIR/compose/watchtower.yml" ~/docker/watchtower/compose.yml
     dc_up watchtower "Watchtower"
-    [ -f compose/vaultwarden.yml ] && {
-        cp compose/vaultwarden.yml ~/docker/vaultwarden/compose.yml
+    [ -f "$SCRIPT_DIR/compose/vaultwarden.yml" ] && {
+        cp "$SCRIPT_DIR/compose/vaultwarden.yml" ~/docker/vaultwarden/compose.yml
         dc_up vaultwarden "Vaultwarden"
         warn "Nach erstem Account: SIGNUPS_ALLOWED=false!"
     }
@@ -738,12 +738,12 @@ SAN
 
 main() {
     PROGRESS_FILE="$HOME_DIR/.bootstrap-progress"
-    [ -f "$PROGRESS_FILE" ] && while IFS='=' read -r k v; do [[ "$k" =~ ^STEP[0-9]+$ && "$v" == "done" ]] && eval "$k=done"; done < "$PROGRESS_FILE"
+    [ -f "$PROGRESS_FILE" ] && while IFS='=' read -r k v; do [[ "$k" =~ ^STEP[0-9]+$ && "$v" == "done" ]] && declare "$k=done"; done < "$PROGRESS_FILE"
     select_profile
     pre_flight_checks
     echo ""
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║     Bootstreep Homelab Bootstrap v3.13.0         ║"
+    echo "║     Bootstreep Homelab Bootstrap v4.1.2         ║"
     echo "║     PRIVACY-FIRST • LOCAL KI • NO TELEMETRY       ║"
     echo "╚══════════════════════════════════════════════════╝"
     [ -d "$SCRIPT_DIR/config" ] && cp -r "$SCRIPT_DIR/config" ~/ 2>/dev/null || true

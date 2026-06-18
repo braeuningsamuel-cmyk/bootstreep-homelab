@@ -22,6 +22,9 @@ services:
       - COLLECTIONS=sudo linux sshd traefik http-cve
       - GID=1000
       - UID=1000
+    deploy:
+      resources:
+        limits: {memory: 512m, cpus: "1"}
     cap_add: [SYS_PTRACE, NET_ADMIN, NET_RAW]
 
   crowdsec-bouncer:
@@ -35,6 +38,9 @@ services:
       - API_KEY=${CROWDSEC_API_KEY:?}
       - DISABLE_IPV6=true
       - BLACKHOLE_MODE=false
+    deploy:
+      resources:
+        limits: {memory: 128m, cpus: "0.5"}
     cap_add: [NET_ADMIN, NET_RAW]
     depends_on:
       crowdsec:

@@ -16,6 +16,9 @@ services:
       - "3001:3001"
     volumes:
       - uptime_kuma_data:/app/data
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001"]
       interval: 60s

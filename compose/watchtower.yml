@@ -25,6 +25,9 @@ services:
       - WATCHTOWER_ROLLING_RESTART=true
       - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
       - WATCHTOWER_DISABLE_ANALYTICS=true
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
       interval: 60s

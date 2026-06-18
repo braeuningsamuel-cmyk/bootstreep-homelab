@@ -20,6 +20,9 @@ services:
       - teamspeak_data:/var/ts3server
     environment:
       - TS3SERVER_LICENSE=accept
+    deploy:
+      resources:
+        limits: {memory: 512m, cpus: "1"}
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "10011"]
       interval: 60s

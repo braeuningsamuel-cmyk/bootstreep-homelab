@@ -20,6 +20,9 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=${TIMEZONE:-Europe/Berlin}
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9696/api/v1/system/status"]
       interval: 60s

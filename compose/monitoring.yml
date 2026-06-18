@@ -25,6 +25,9 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
+    deploy:
+      resources:
+        limits: {memory: 2g, cpus: "1"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
       interval: 60s
@@ -42,6 +45,9 @@ services:
       - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
     command:
       - '-config.file=/etc/loki/local-config.yaml'
+    deploy:
+      resources:
+        limits: {memory: 2g, cpus: "1"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
       interval: 60s
@@ -57,6 +63,9 @@ services:
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
 
   node-exporter:
     <<: *common
@@ -74,6 +83,9 @@ services:
       - '--path.rootfs=/rootfs'
       - '--no-collector.wifi'
       - '--no-collector.zfs'
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     cap_add: [SYS_TIME]
 
   cadvisor:
@@ -88,6 +100,9 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     devices:
       - /dev/kmsg
     privileged: false
@@ -110,6 +125,9 @@ services:
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
       - GF_AUTH_ANONYMOUS_ENABLED=false
       - GF_SERVER_ROOT_URL=http://localhost:3000
+    deploy:
+      resources:
+        limits: {memory: 1g, cpus: "1"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 60s

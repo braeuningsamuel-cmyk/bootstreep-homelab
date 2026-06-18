@@ -89,9 +89,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check for :latest tags
         run: |
-          ALLOWED_LATEST=("unbound" "valheim")
+          ALLOWED_LATEST=("unbound" "valheim" "tor" "nextcloud" "hermes")
           FAIL=0
-          for f in compose/*.yml docker-compose-all.yml; do
+          for f in compose/*.yml compose/amp-instances/*.yml docker-compose-all.yml; do
             while IFS= read -r line; do
               tag=$(echo "$line" | sed -n 's/.*image:.*:\(.*\)/\1/p')
               if [ "$tag" = "latest" ]; then

@@ -21,6 +21,9 @@ services:
       - ~/hermes:/app
     depends_on:
       ollama: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {memory: 1g, cpus: "1"}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 60s

@@ -28,6 +28,9 @@ services:
     volumes:
       - valheim_config:/config
       - valheim_data:/data
+    deploy:
+      resources:
+        limits: {memory: 2g, cpus: "2"}
     logging:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}

@@ -32,6 +32,9 @@ services:
       - ROCKET_ADDRESS=0.0.0.0
     volumes:
       - vaultwarden_data:/data
+    deploy:
+      resources:
+        limits: {memory: 256m, cpus: "0.5"}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost/alive"]
       interval: 60s

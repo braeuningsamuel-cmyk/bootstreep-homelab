@@ -29,6 +29,9 @@ services:
       - RCON_PORT=25575
     volumes:
       - minecraft_data:/data
+    deploy:
+      resources:
+        limits: {memory: 4g, cpus: "4"}
     healthcheck:
       test: ["CMD", "mc-health"]
       interval: 60s
