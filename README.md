@@ -1,7 +1,8 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-4.0.0-6C5CE7?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-4.1.2-6C5CE7?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/status-enterprise--inspired-00B894?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/license-unlicense-6C5CE7?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbraeuningsamuel-cmyk%2Fbootstreep-homelab%2Fmain%2F.github%2Fworkflows%2Fci.yml&query=%24.name&label=CI&style=for-the-badge&color=6C5CE7" alt="CI">
   <br>
   <img src="https://img.shields.io/badge/services-30+-6C5CE7?style=flat-square" alt="Services">
   <img src="https://img.shields.io/badge/security-hardened-00B894?style=flat-square" alt="Security">
@@ -11,6 +12,7 @@
   <img src="https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/ansible-%231A1918?style=flat-square&logo=ansible&logoColor=white" alt="Ansible">
   <img src="https://img.shields.io/badge/ubuntu-24.04-E95420?style=flat-square&logo=ubuntu&logoColor=white" alt="Ubuntu">
+  <img src="https://img.shields.io/github/actions/workflow/status/braeuningsamuel-cmyk/bootstreep-homelab/ci.yml?style=flat-square&logo=github&label=CI%20Status" alt="CI Status">
 </p>
 
 <h1 align="center">Bootstreep Homelab</h1>
@@ -238,7 +240,8 @@ Docker-Fail, Stromausfall, DB-Korruption, DNS-Fail, Internet-Fail
 ├── ai-agent/                        Telegram-Bot (14 Commands)
 ├── ansible/                         Ansible-Rollen
 ├── cloud-init/                      Cloud-Init-Profile
-└── .github/workflows/               CI (ShellCheck, yamllint, ruff, gitleaks)
+└── .github/workflows/               8 CI-Jobs (ShellCheck, yamllint, ruff,
+                                      gitleaks, Compose, Tags, Env-Check)
 ```
 
 <br>
@@ -255,7 +258,8 @@ Docker-Fail, Stromausfall, DB-Korruption, DNS-Fail, Internet-Fail
 ```
 
 - Command-Whitelist · `shell=False` · `ALLOWED_CHAT_IDS` Pflicht
-- Nutzt lokales Ollama (keine Cloud-API)
+- Nutzt LiteLLM-Gateway → lokales Ollama (keine Cloud-API)
+- `/ask` via OpenAI-kompatiblen Endpoint (privacy-first)
 - Tägliches Briefing mit Wetter, Aktien, News, E-Mails
 
 <br>
