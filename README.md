@@ -114,6 +114,7 @@ INSTALL_PROFILE=ai OLLAMA_MODELS=full ./bootstrap.sh
 ## Alle Dienste
 
 ### Kern-Infrastruktur
+
 | Dienst | Port | Beschreibung |
 |--------|------|-------------|
 | Caddy | `80, 443` | Reverse Proxy + Dashboard |
@@ -123,6 +124,7 @@ INSTALL_PROFILE=ai OLLAMA_MODELS=full ./bootstrap.sh
 | CrowdSec | `–` | WAF + IP-Reputation |
 
 ### KI & RAG
+
 | Dienst | Port | Beschreibung |
 |--------|------|-------------|
 | Ollama | `11434` | Lokale KI-Modelle |
@@ -132,6 +134,7 @@ INSTALL_PROFILE=ai OLLAMA_MODELS=full ./bootstrap.sh
 | Hermes | `3000` | Alternative KI-Chat-UI |
 
 ### Monitoring
+
 | Dienst | Port | Beschreibung |
 |--------|------|-------------|
 | Grafana | `3000` | Metriken + Dashboards |
@@ -142,6 +145,7 @@ INSTALL_PROFILE=ai OLLAMA_MODELS=full ./bootstrap.sh
 | Uptime Kuma | `3001` | Uptime-Monitoring |
 
 ### Media & Downloads
+
 | Dienst | Port | Beschreibung |
 |--------|------|-------------|
 | Jellyfin | `8096` | Media-Streaming |
@@ -152,6 +156,7 @@ INSTALL_PROFILE=ai OLLAMA_MODELS=full ./bootstrap.sh
 | SABnzbd | `8085` | Usenet-Downloads |
 
 ### Cloud & Sync
+
 | Dienst | Port | Beschreibung |
 |--------|------|-------------|
 | Nextcloud AIO | `8082` | Self-hosted Cloud |
@@ -159,6 +164,7 @@ INSTALL_PROFILE=ai OLLAMA_MODELS=full ./bootstrap.sh
 | Vaultwarden | `8093` | Passwort-Manager |
 
 ### Tools & Automation
+
 | Dienst | Port | Beschreibung |
 |--------|------|-------------|
 | n8n | `5678` | Workflow-Automation |

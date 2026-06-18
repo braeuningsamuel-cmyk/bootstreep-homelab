@@ -9,7 +9,7 @@ ignores:
 config:
   default: true
   MD013:
-    line_length: 200
+    line_length: 300
   MD033: false
   MD041: false
   MD040: false

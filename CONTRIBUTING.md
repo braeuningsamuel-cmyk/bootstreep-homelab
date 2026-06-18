@@ -18,6 +18,7 @@ pre-commit install  # auto-lint before each commit
 
 1. Fork & create branch: `git checkout -b feature/xyz`
 2. Make changes, then run linters locally:
+
    ```bash
    # Shell
    shellcheck --severity=warning bootstrap.sh scripts/*.sh
@@ -30,6 +31,7 @@ pre-commit install  # auto-lint before each commit
    # Secrets
    gitleaks detect --source . -v
    ```
+
 3. Commit with conventional message: `git commit -m "feat: add XYZ"`
 4. Push & open PR against `main`
 
@@ -44,6 +46,7 @@ pre-commit install  # auto-lint before each commit
 | Docker Compose | v3.8+, named volumes, healthchecks, pinned tags | yamllint + custom CI |
 
 ### Shell Guidelines
+
 - Always `set -euo pipefail` (except short inline scripts)
 - Use `scripts/lib.sh` helpers: `log()`, `warn()`, `err()`, `die()`
 - Prefer `$HOME` over `/home/$USER`
@@ -51,6 +54,7 @@ pre-commit install  # auto-lint before each commit
 - Use `[[ ... ]]` over `[ ... ]` for bash tests
 
 ### Compose Guidelines
+
 - Every service needs: healthcheck, resource limits, pinned image tag, logging config
 - No `ports` on `0.0.0.0` – always bind to `127.0.0.1` for internal services
 - No `:latest` tags (exceptions: unbound, valheim)

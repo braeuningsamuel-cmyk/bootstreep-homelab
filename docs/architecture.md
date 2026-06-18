@@ -16,11 +16,11 @@ The system is built around a few core components:
 
 The provisioning process is designed to be fully automated:
 
-1.  **First Boot**: On the first boot of a new Ubuntu Server instance, `cloud-init` is executed.
-2.  **User and SSH Setup**: `cloud-init` creates a new user and adds your public SSH key for remote access.
-3.  **Ansible Installation**: `cloud-init` installs Ansible on the system.
-4.  **Repository Cloning**: The `homelab-base` repository is cloned to `/opt/homelab-base`.
-5.  **Ansible-Pull Execution**: `ansible-pull` is executed, which runs the main `site.yml` playbook.
-6.  **System Configuration**: The Ansible playbook applies the various roles to configure the system according to the defined host profiles.
+1. **First Boot**: On the first boot of a new Ubuntu Server instance, `cloud-init` is executed.
+2. **User and SSH Setup**: `cloud-init` creates a new user and adds your public SSH key for remote access.
+3. **Ansible Installation**: `cloud-init` installs Ansible on the system.
+4. **Repository Cloning**: The `homelab-base` repository is cloned to `/opt/homelab-base`.
+5. **Ansible-Pull Execution**: `ansible-pull` is executed, which runs the main `site.yml` playbook.
+6. **System Configuration**: The Ansible playbook applies the various roles to configure the system according to the defined host profiles.
 
 This process ensures that a new server can be fully provisioned and configured without any manual intervention.
