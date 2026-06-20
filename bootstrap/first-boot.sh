@@ -1,4 +1,9 @@
 #!/bin/bash
+# Bootstreep first-boot initialization
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+#!/bin/bash
 #
 # first-boot.sh: Script executed by cloud-init on first boot.
 #
