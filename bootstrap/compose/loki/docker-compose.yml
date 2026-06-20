@@ -1,0 +1,23 @@
+---
+version: "3.9"
+
+services:
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - homelab
+
+volumes:
+  loki_data:
+
+networks:
+  homelab:
+    external: true

@@ -6,31 +6,60 @@ Privacy-First: Lokale Ausführung, keine externen Calls
 
 import subprocess
 from pathlib import Path
+import re
 
 
-def run_local(cmd: list, timeout: int = 30) -> tuple:
-    ALLOWED = {
-        "docker",
-        "systemctl",
-        "ufw",
-        "fail2ban-client",
-        "ls",
-        "cat",
-        "df",
-        "free",
-    }
-    if not cmd or cmd[0] not in ALLOWED:
-        return False, f"Nicht erlaubt: {cmd[0] if cmd else ''}"
+ALLOWED_LOCAL_COMMANDS = {
+    "df": [["df", "-h"]],
+    "free": [["free", "-h"]],
+    "docker_ps": [["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"]],
+    "ufw_status": [["ufw", "status", "verbose"]],
+    "fail2ban_status": [["fail2ban-client", "status"]],
+}
+
+ALLOWED_REMOTE_COMMANDS = {
+    "status": "systemctl --failed --no-pager",
+    "disk": "df -h",
+    "memory": "free -h",
+    "docker": "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'",
+}
+
+ALLOWED_DOCKER_ACTIONS = {"ps", "up", "down", "restart", "logs"}
+CONTAINER_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
+
+
+def run_local(command_name: str, timeout: int = 30) -> tuple:
+    commands = ALLOWED_LOCAL_COMMANDS.get(command_name)
+    if not commands:
+        return False, f"Nicht erlaubt: {command_name}"
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout, shell=False
-        )
-        return True, (result.stdout or result.stderr).strip()
+        ok = True
+        output = []
+        for cmd in commands:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout, shell=False
+            )
+            ok = ok and result.returncode == 0
+            output.append((result.stdout or result.stderr).strip())
+        return ok, "\n".join(part for part in output if part)
     except Exception as e:
         return False, str(e)
 
 
-def run_remote(host: str, user: str, cmd: str, key: str = None) -> tuple:
+def run_command(cmd: list, timeout: int = 30) -> tuple:
+    """Compatibility wrapper for callers that pass exact safe commands."""
+    for name, commands in ALLOWED_LOCAL_COMMANDS.items():
+        if cmd in commands:
+            return run_local(name, timeout)
+    return False, f"Nicht erlaubt: {' '.join(cmd) if cmd else ''}"
+
+
+def run_remote(host: str, user: str, command_name: str, key: str = None) -> tuple:
+    if not CONTAINER_RE.match(host) or not CONTAINER_RE.match(user):
+        return False, "Ungueltiger Host oder Benutzer"
+    cmd = ALLOWED_REMOTE_COMMANDS.get(command_name)
+    if not cmd:
+        return False, f"Remote-Kommando nicht erlaubt: {command_name}"
     ssh_cmd = [
         "ssh",
         "-o",
@@ -43,8 +72,12 @@ def run_remote(host: str, user: str, cmd: str, key: str = None) -> tuple:
         cmd,
     ]
     if key:
+        key_path = Path(key).expanduser().resolve()
+        ssh_dir = (Path.home() / ".ssh").resolve()
+        if ssh_dir not in key_path.parents or not key_path.is_file():
+            return False, "SSH-Key nicht erlaubt"
         ssh_cmd.insert(2, "-i")
-        ssh_cmd.insert(3, key)
+        ssh_cmd.insert(3, str(key_path))
     try:
         result = subprocess.run(
             ssh_cmd, capture_output=True, text=True, timeout=30, shell=False
@@ -55,8 +88,14 @@ def run_remote(host: str, user: str, cmd: str, key: str = None) -> tuple:
 
 
 def docker_action(action: str, container: str = None) -> tuple:
+    if action not in ALLOWED_DOCKER_ACTIONS:
+        return False, f"Unbekannte Aktion: {action}"
     if container:
+        if not CONTAINER_RE.match(container):
+            return False, f"Ungueltiger Containername: {container}"
         compose_dir = Path.home() / "docker"
+        if not compose_dir.exists():
+            return False, f"Compose-Verzeichnis nicht gefunden: {compose_dir}"
         for sub in compose_dir.iterdir():
             if not sub.is_dir():
                 continue
@@ -87,15 +126,15 @@ def docker_action(action: str, container: str = None) -> tuple:
                     cmd.append("restart")
                 elif action == "logs":
                     cmd.extend(["logs", "--tail", "50"])
-                else:
-                    return False, f"Unbekannte Aktion: {action}"
                 result = subprocess.run(
                     cmd, capture_output=True, text=True, shell=False
                 )
                 return result.returncode == 0, (result.stdout or result.stderr).strip()
         return False, f"Container nicht gefunden: {container}"
     else:
-        cmd = ["docker", action]
+        if action != "ps":
+            return False, "Docker-Aktion ohne Container nicht erlaubt"
+        cmd = ["docker", "ps"]
         result = subprocess.run(cmd, capture_output=True, text=True, shell=False)
         return result.returncode == 0, (result.stdout or result.stderr).strip()
 

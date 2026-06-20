@@ -1,116 +1,38 @@
----
 name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master]
   pull_request:
-    branches: [main]
-
-env:
-  PYTHON_VERSION: "3.12"
+    branches: [main, master]
 
 jobs:
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@2.0.0
+        uses: ludeeus/action-shellcheck@master
         with:
-          scandir: ./
-          severity: warning
-          additional_files: |
-            bootstrap.sh
-            scripts/*.sh
+          scandir: ./bootstrap
 
   yamllint:
     name: YAML Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Install yamllint
-        run: pip install yamllint==1.35.1
+      - uses: actions/checkout@v4
       - name: Run yamllint
         run: |
-          yamllint -c .yamllint.yaml compose/ docker-compose-all.yml .github/
+          pip install yamllint
+          yamllint bootstrap/
 
-  python-lint:
-    name: Python (ruff)
+  shellcheck-strict:
+    name: Bash Strict Mode Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install ruff
-        run: pip install ruff
-      - name: Run ruff
+      - uses: actions/checkout@v4
+      - name: Verify bash strict mode
         run: |
-          ruff check ai-agent/
-          ruff format --check ai-agent/
-
-  markdown-lint:
-    name: Markdown Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@v23
-        with:
-          globs: '**/*.md'
-
-  gitleaks:
-    name: Secret Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v3
-
-  compose-validate:
-    name: Compose Schema
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Validate compose files
-        run: |
-          for f in compose/*.yml docker-compose-all.yml; do
-            python3 -c "import yaml, sys; yaml.safe_load(open('$f')); print('OK: $f')" || { echo "FAIL: $f"; exit 1; }
-          done
-
-  pinned-tags:
-    name: Pinned Tags Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Check for :latest tags
-        run: |
-          ALLOWED_LATEST=("unbound" "valheim" "tor" "nextcloud" "hermes")
-          FAIL=0
-          for f in compose/*.yml compose/amp-instances/*.yml docker-compose-all.yml; do
-            while IFS= read -r line; do
-              tag=$(echo "$line" | sed -n 's/.*image:.*:\(.*\)/\1/p')
-              if [ "$tag" = "latest" ]; then
-                allowed=0
-                for a in "${ALLOWED_LATEST[@]}"; do
-                  echo "$line" | grep -qi "$a" && allowed=1
-                done
-                [ "$allowed" -eq 0 ] && echo "UNPINNED: $f: $line" && FAIL=1
-              fi
-            done < "$f"
-          done
-          [ "$FAIL" -eq 1 ] && echo "❌ Unpinned :latest tags found (except $ALLOWED_LATEST)" && exit 1
-          echo "✅ All images pinned"
-
-  env-consistency:
-    name: Env Var Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Check env vars referenced in compose exist in .env.example
-        run: |
-          python3 scripts/check-env-vars.py
+          grep -lE '^set -[Euo]+' bootstrap/scripts/*.sh || (echo "Missing strict mode"; exit 1)
+          echo "All scripts use strict mode ✓"

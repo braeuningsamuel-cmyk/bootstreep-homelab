@@ -6,6 +6,7 @@ Privacy-First: lokale KI via LiteLLM, command whitelist, shell=False
 
 import logging
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -56,20 +57,23 @@ if not ALLOWED_CHATS:
     sys.exit(1)
 
 ALLOWED_CMDS = {
+    "bash",
     "docker",
-    "systemctl",
-    "ufw",
-    "fail2ban-client",
-    "tail",
-    "cat",
-    "ls",
     "df",
-    "free",
-    "uptime",
-    "dig",
-    "ping",
-    "curl",
-    "ssh",
+    "hostname",
+    "python3",
+    "ss",
+}
+
+CONTAINER_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
+SCRIPT_DIR = (Path.home() / "scripts").resolve()
+AI_AGENT_DIR = (Path.home() / "ai-agent").resolve()
+ALLOWED_SCRIPTS = {
+    (SCRIPT_DIR / "health-check.sh").resolve(),
+    (SCRIPT_DIR / "update-all.sh").resolve(),
+    (SCRIPT_DIR / "backup-all.sh").resolve(),
+    (SCRIPT_DIR / "dnssec-test.sh").resolve(),
+    (AI_AGENT_DIR / "daily.py").resolve(),
 }
 
 
@@ -79,9 +83,42 @@ def check_auth(update: Update) -> bool:
     return update.effective_chat.id in ALLOWED_CHATS
 
 
+def is_allowed_command(cmd: list) -> bool:
+    if cmd == ["df", "-h"] or cmd == ["hostname", "-I"] or cmd == ["ss", "-tlnp"]:
+        return True
+    if cmd == [
+        "docker",
+        "ps",
+        "--format",
+        "table {{.Names}}\t{{.Status}}\t{{.Ports}}",
+    ]:
+        return True
+    if len(cmd) == 5 and cmd[:3] == ["docker", "compose", "-f"] and cmd[4] == "restart":
+        compose_file = Path(cmd[3]).expanduser().resolve()
+        docker_root = (Path.home() / "docker").resolve()
+        return docker_root in compose_file.parents and compose_file.name == "compose.yml"
+    if (
+        len(cmd) == 5
+        and cmd[:3] == ["docker", "logs", "--tail"]
+        and cmd[3].isdigit()
+        and CONTAINER_RE.match(cmd[4])
+    ):
+        return 1 <= int(cmd[3]) <= 500
+    return False
+
+
 def run_cmd(cmd: list, timeout: int = 30) -> tuple:
     if not cmd or cmd[0] not in ALLOWED_CMDS:
         return False, f"Kommando nicht erlaubt: {cmd[0] if cmd else ''}"
+    if cmd[0] in {"bash", "python3"}:
+        if len(cmd) != 2:
+            return False, "Nur freigegebene Skripte duerfen gestartet werden"
+        script = Path(cmd[1]).expanduser().resolve()
+        if script not in ALLOWED_SCRIPTS:
+            return False, f"Skript nicht erlaubt: {script}"
+        cmd = [cmd[0], str(script)]
+    elif not is_allowed_command(cmd):
+        return False, f"Kommando-Argumente nicht erlaubt: {' '.join(cmd)}"
     try:
         result = subprocess.run(
             cmd,
@@ -141,13 +178,21 @@ async def cmd_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /restart <container>")
         return
     container = context.args[0]
+    if not CONTAINER_RE.match(container):
+        await update.message.reply_text("Ungueltiger Containername")
+        return
+    docker_root = (Path.home() / "docker").resolve()
+    compose_file = (docker_root / container / "compose.yml").resolve()
+    if docker_root not in compose_file.parents:
+        await update.message.reply_text("Compose-Pfad nicht erlaubt")
+        return
     await update.message.reply_text(f"🔄 Neustart: {container}...")
     ok, out = run_cmd(
         [
             "docker",
             "compose",
             "-f",
-            f"{Path.home()}/docker/{container}/compose.yml",
+            str(compose_file),
             "restart",
         ],
         timeout=60,
@@ -164,9 +209,13 @@ async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /logs <container> [anzahl]")
         return
     container = context.args[0]
+    if not CONTAINER_RE.match(container):
+        await update.message.reply_text("Ungueltiger Containername")
+        return
     lines = (
         context.args[1] if len(context.args) > 1 and context.args[1].isdigit() else "50"
     )
+    lines = str(min(int(lines), 500))
     ok, out = run_cmd(["docker", "logs", "--tail", lines, container])
     await update.message.reply_text(
         f"```\n{out[:3500]}\n```", parse_mode=ParseMode.MARKDOWN

@@ -1,57 +1,37 @@
+# .gitignore for Bootstreep Homelab
+# Secrets and configs
+.env
+*.env.local
+secrets/
+
 # OS
 .DS_Store
 Thumbs.db
-*.swp
-*.swo
 
 # Logs
+logs/*.log
 *.log
-logs/
-bootstrap.log
-
-# Secrets
-.env
-.env.local
-*.enc.env
-*.pem
-*.key
-*.p12
-secrets/
-.sops.yaml
 
 # Backups
 backups/
 *.tar.gz
-*.bak
+*.tar.bz2
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-.venv/
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-.npm
+# Docker
+**/volumes/
 
 # IDE
 .vscode/
 .idea/
-*.iml
+*.swp
 
-# Docker
-.docker/
-docker-compose.override.yml
+# Build artifacts
+node_modules/
+__pycache__/
+*.pyc
 
-# Generated
-.config/
-.cache/
+# Local overrides
+bootstrap/config/*.local.env
 
-# Local config
-.env.production
+# Docker compose overrides (use base + override pattern)
+**/docker-compose.override.yml

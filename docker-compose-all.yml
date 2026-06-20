@@ -336,7 +336,6 @@ services:
 
   amp:
     <<: *common
-    cap_drop: []  # Docker Socket benötigt Capabilities
     image: ghcr.io/cubecoders/amp:2.5.1.6
     container_name: amp
     ports:
@@ -344,7 +343,6 @@ services:
       - "8088:8088"
     volumes:
       - amp_data:/amp
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - AMP_UID=1000
       - AMP_GID=1000

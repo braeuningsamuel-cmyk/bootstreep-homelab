@@ -1,0 +1,25 @@
+---
+version: "3.9"
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - uptime_kuma_data:/app/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.rule=Host(`status.${DOMAIN}`)"
+      - "traefik.http.routers.uptime.entrypoints=websecure"
+      - "traefik.http.routers.uptime.tls.certresolver=cloudflare"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"
+    networks:
+      - homelab
+
+volumes:
+  uptime_kuma_data:
+
+networks:
+  homelab:
+    external: true
