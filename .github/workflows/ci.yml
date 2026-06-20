@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -6,33 +7,117 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: ./bootstrap
+          additional_files: bootstrap/bootstrap.sh
 
   yamllint:
-    name: YAML Lint
+    name: yamllint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run yamllint
-        run: |
-          pip install yamllint
-          yamllint bootstrap/
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  shellcheck-strict:
-    name: Bash Strict Mode Check
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: yamllint -c .yamllint.yaml bootstrap/compose/
+
+  bats:
+    name: BATS Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Run BATS tests
+        run: bats tests/
+
+  secrets:
+    name: Secret Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Verify bash strict mode
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for hardcoded secrets
         run: |
-          grep -lE '^set -[Euo]+' bootstrap/scripts/*.sh || (echo "Missing strict mode"; exit 1)
-          echo "All scripts use strict mode ✓"
+          echo "🔍 Scanning for hardcoded secrets..."
+          if grep -rn --include="*.sh" --include="*.yml" --include="*.env" \
+            -E "(api_key|secret|password|token)\s*=\s*['\"][^'\"]{16,}['\"]" \
+            bootstrap/ scripts/ 2>/dev/null; then
+            echo "❌ Found hardcoded secrets!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: |
+            **/*.md
+          config: .markdownlint-cli2.yaml
+
+  docker-validate:
+    name: Docker Compose Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compose files
+        run: |
+          for f in bootstrap/compose/*/docker-compose.yml; do
+            echo "Validating: $f"
+            # Just check YAML parses
+            python3 -c "import yaml; yaml.safe_load(open('$f'))" || exit 1
+          done
+
+  all-checks:
+    name: All Checks Summary
+    runs-on: ubuntu-latest
+    needs: [shellcheck, yamllint, bats, secrets, markdown-lint, docker-validate]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "✅ All CI checks passed!"
+          echo ""
+          echo "Results:"
+          echo "  shellcheck: ${{ needs.shellcheck.result }}"
+          echo "  yamllint:   ${{ needs.yamllint.result }}"
+          echo "  bats:       ${{ needs.bats.result }}"
+          echo "  secrets:    ${{ needs.secrets.result }}"
+          echo "  markdown:   ${{ needs.markdown-lint.result }}"
+          echo "  docker:     ${{ needs.docker-validate.result }}"

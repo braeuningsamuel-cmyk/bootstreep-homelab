@@ -3,11 +3,12 @@ version: "3.9"
 
 services:
   uptime-kuma:
-    image: louislam/uptime-kuma:1
+    image: louislam/uptime-kuma:1.23.16
     container_name: uptime-kuma
     restart: unless-stopped
     volumes:
       - uptime_kuma_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.uptime.rule=Host(`status.${DOMAIN}`)"
@@ -16,10 +17,30 @@ services:
       - "traefik.http.services.uptime.loadbalancer.server.port=3001"
     networks:
       - homelab
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   uptime_kuma_data:
+    name: uptime_kuma_data
 
 networks:
   homelab:
     external: true
+    name: homelab

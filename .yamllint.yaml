@@ -3,16 +3,22 @@ extends: default
 
 rules:
   line-length:
-    max: 200
-    allow-non-breakable-words: true
-    allow-non-breakable-inline-mappings: true
-  brackets:
-    max-spaces-inside: 1
+    max: 120
+    level: warning
+  document-start:
+    present: true
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  truthy:
+    allowed-values: ['true', 'false']
+    check-keys: false
   indentation:
     spaces: 2
-    indent-sequences: consistent
-  document-start: disable
-  truthy:
-    level: warning
-    check-keys: false
-  comments-indentation: disable
+    indent-sequences: true
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: false

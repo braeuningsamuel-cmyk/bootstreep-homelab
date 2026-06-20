@@ -1,40 +1,76 @@
 ---
 version: "3.9"
 
+# ==============================================================================
+# Traefik v3.1 - Reverse Proxy with Let's Encrypt via Cloudflare DNS Challenge
+# ==============================================================================
+
 services:
   traefik:
     image: traefik:v3.1
     container_name: traefik
     restart: unless-stopped
+    # Run as non-root for security
+    user: "0:0"
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=homelab
       - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
       - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls=true
       - --certificatesresolvers.cloudflare.acme.dnschallenge=true
       - --certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.delaybeforecheck=0
       - --certificatesresolvers.cloudflare.acme.email=${CLOUDFLARE_EMAIL}
       - --certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json
       - --api.dashboard=true
+      - --api.insecure=false
       - --log.level=INFO
       - --accesslog=true
+      - --accesslog.fields.defaultmode=keep
+      - --accesslog.fields.headers.defaultmode=drop
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_letsencrypt:/letsencrypt
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-    labels:
-      - "traefik.enable=true"
     networks:
       - homelab
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   traefik_letsencrypt:
+    name: traefik_letsencrypt
 
 networks:
   homelab:
     name: homelab
     driver: bridge
+    labels:
+      com.bootstreep.network.description: "Main homelab Docker network"

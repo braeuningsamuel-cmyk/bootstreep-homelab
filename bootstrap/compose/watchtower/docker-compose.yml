@@ -3,15 +3,37 @@ version: "3.9"
 
 services:
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:1.7.1
     container_name: watchtower
     restart: unless-stopped
-    command: --schedule "0 0 4 * * *" --cleanup
+    command: --schedule "0 0 4 * * *" --cleanup --include-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
+    environment:
+      - WATCHTOWER_LABEL_ENABLE=***
+      - WATCHTOWER_CLEANUP=***
+      - WATCHTOWER_INCLUDE_STOPPED=***
+      - WATCHTOWER_ROLLING_RESTART=***    networks:
       - homelab
+    healthcheck:
+      test: ["CMD", "/watchtower", "--help"]
+      interval: 1h
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   homelab:
     external: true
+    name: homelab

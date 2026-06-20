@@ -3,9 +3,10 @@ version: "3.9"
 
 services:
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.4.2
     container_name: alloy
     restart: unless-stopped
+    user: "10001:10001"
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -17,13 +18,33 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - alloy_data:/var/lib/alloy/data
     ports:
-      - "12345:12345"
+      - "127.0.0.1:12345:12345"
     networks:
       - homelab
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:12345/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   alloy_data:
+    name: alloy_data
 
 networks:
   homelab:
     external: true
+    name: homelab

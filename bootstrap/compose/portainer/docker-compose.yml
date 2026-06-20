@@ -3,7 +3,7 @@ version: "3.9"
 
 services:
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.21.5
     container_name: portainer
     restart: unless-stopped
     ports:
@@ -19,10 +19,30 @@ services:
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
     networks:
       - homelab
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   portainer_data:
+    name: portainer_data
 
 networks:
   homelab:
     external: true
+    name: homelab
