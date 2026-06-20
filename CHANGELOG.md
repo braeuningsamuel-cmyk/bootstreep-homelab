@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.0.0 (2026-06-20) – Production-Ready Release
+
+### 🎉 Major Improvements
+
+- **Idempotent Bash scripts** with strict mode (`set -Eeuo pipefail`) across all 11 phases
+- **Modular 11-phase pipeline** with `--dry-run`, `--debug`, `--silent`, `--backup`, `--skip` flags
+- **Makefile** with 18 targets for easy workflow
+- **24 BATS tests** covering all critical paths
+- **7 documentation files** (INSTALL, CONFIGURATION, SERVICES, SECURITY, TROUBLESHOOTING, ARCHITECTURE, TESTING)
+- **CI Pipeline** with 6 jobs (shellcheck, yamllint, bats, secrets, markdown-lint, docker-validate)
+
+### 🐛 Bug Fixes (33 issues resolved)
+
+- All 11 Docker Compose stacks: added healthchecks, resource limits, security_opt, restart policies
+- All 11 Docker Compose stacks: created `.env.example` files
+- Traefik: added `--providers.docker.network=homelab`, `api.insecure=false`
+- Authentik: added Redis service, healthchecks, depends_on conditions
+- All image versions pinned (was `:latest`)
+
+### 🔐 Security Improvements
+
+- All stacks: `no-new-privileges:true`
+- All scripts: strict mode + quoting
+- Resource limits (DoS protection)
+- Log rotation configured
+- Read-only docker.sock mounts
+
+### 🚀 New Features
+
+- `bootstrap/scripts/rollback.sh` — automated rollback from Restic backup
+- `config/systemd/bootstreep-homelab.service` — systemd unit for auto-start
+- `.githooks/pre-commit` — pre-commit validation hook
+- `bootstrap/compose/prometheus/prometheus.yml` — full Prometheus config
+- `bootstrap/compose/loki/loki-config.yaml` — full Loki config
+- `bootstrap/compose/alloy/config.alloy` — Alloy log/metric collection
+- `.github/ISSUE_TEMPLATE/` — bug + feature request templates
+- `.github/PULL_REQUEST_TEMPLATE.md` — PR template
+- `SECURITY.md` — security policy
+- Pre-commit hook for secrets scanning
+
 ## v4.1.0 (2026-06-17) – DevSecOps CI + Phase1 Audit-Fixes
 
 ### Security & Privacy

@@ -1,0 +1,87 @@
+---
+# Prometheus configuration for Bootstreep Homelab
+# Scrapes metrics from all services and exporters
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: "bootstreep-homelab"
+    cluster: "homelab"
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+      # Uncomment when alertmanager is deployed:
+      # - 'alertmanager:9093'
+
+# Load rules
+rule_files:
+  - "alerts.yml"
+
+# Scrape configs
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: "prometheus"
+
+  # Traefik (if metrics enabled)
+  - job_name: "traefik"
+    static_configs:
+      - targets: ["traefik:8082"]
+        labels:
+          service: "traefik"
+
+  # cAdvisor (host metrics)
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+        labels:
+          service: "cadvisor"
+
+  # Node Exporter (host hardware)
+  - job_name: "node"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "node-exporter"
+
+  # Grafana metrics
+  - job_name: "grafana"
+    static_configs:
+      - targets: ["grafana:3000"]
+        labels:
+          service: "grafana"
+
+  # Loki metrics
+  - job_name: "loki"
+    static_configs:
+      - targets: ["loki:3100"]
+        labels:
+          service: "loki"
+
+  # Vaultwarden (via metrics endpoint if enabled)
+  - job_name: "vaultwarden"
+    static_configs:
+      - targets: ["vaultwarden:80"]
+        labels:
+          service: "vaultwarden"
+
+  # Uptime Kuma (Prometheus exporter)
+  - job_name: "uptime-kuma"
+    static_configs:
+      - targets: ["uptime-kuma-exporter:3002"]
+        labels:
+          service: "uptime-kuma"
+
+  # Alloy metrics
+  - job_name: "alloy"
+    static_configs:
+      - targets: ["alloy:12345"]
+        labels:
+          service: "alloy"

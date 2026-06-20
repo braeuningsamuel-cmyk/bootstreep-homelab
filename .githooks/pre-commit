@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Pre-commit hook for bootstreep-homelab
+# Install: cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -euo pipefail
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Check for hardcoded secrets
+echo "  → Scanning for hardcoded secrets..."
+if grep -rn --include="*.sh" --include="*.yml" --include="*.env" \
+    -E "(api_key|secret|password|token)\s*=\s*['\"][^'\"]{16,}['\"]" \
+    bootstrap/ scripts/ 2>/dev/null; then
+    echo "❌ Hardcoded secrets found! Aborting commit."
+    echo "   Move secrets to .env files (gitignored)"
+    exit 1
+fi
+echo "  ✅ No hardcoded secrets"
+
+# 2. Verify bash scripts have strict mode
+echo "  → Checking bash strict mode..."
+for script in bootstrap/scripts/*.sh bootstrap/bootstrap.sh; do
+    if ! head -5 "$script" | grep -q 'set -.*pipefail'; then
+        echo "❌ Missing strict mode: $script"
+        exit 1
+    fi
+done
+echo "  ✅ All bash scripts use strict mode"
+
+# 3. Validate YAML files
+echo "  → Validating YAML files..."
+if command -v python3 >/dev/null 2>&1; then
+    python3 -c "
+import yaml, sys, glob
+for f in glob.glob('bootstrap/compose/*/docker-compose.yml'):
+    try:
+        with open(f) as fh:
+            yaml.safe_load(fh)
+    except Exception as e:
+        print(f'❌ {f}: {e}')
+        sys.exit(1)
+print('  ✅ All compose files valid YAML')
+"
+elif command -v uv >/dev/null 2>&1; then
+    uv run --with pyyaml python -c "
+import yaml, sys, glob
+for f in glob.glob('bootstrap/compose/*/docker-compose.yml'):
+    try:
+        with open(f) as fh:
+            yaml.safe_load(fh)
+    except Exception as e:
+        print(f'❌ {f}: {e}')
+        sys.exit(1)
+print('  ✅ All compose files valid YAML')
+"
+fi
+
+# 4. Check for TODO/FIXME in staged code
+echo "  → Checking for TODO/FIXME markers..."
+if git diff --cached --name-only | xargs grep -l "TODO\|FIXME\|XXX" 2>/dev/null; then
+    echo "⚠️  TODO/FIXME markers found (non-blocking)"
+fi
+
+# 5. Verify compose files have healthchecks (if changed)
+echo "  → Checking healthchecks in compose files..."
+for f in $(git diff --cached --name-only | grep "docker-compose.yml"); do
+    if ! grep -q "healthcheck:" "$f"; then
+        echo "❌ Missing healthcheck in: $f"
+        exit 1
+    fi
+done
+
+echo "✅ All pre-commit checks passed!"
+exit 0

@@ -1,0 +1,54 @@
+[Unit]
+Description=Bootstreep Homelab Docker Compose Stack
+Documentation=https://github.com/braeuningsamuel-cmyk/bootstreep-homelab
+Requires=docker.service network-online.target
+After=docker.service network-online.target
+Wants=docker.socket
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/docker/stacks
+ExecStart=/usr/bin/docker compose -f traefik/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f portainer/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f authentik/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f vaultwarden/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f grafana/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f prometheus/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f loki/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f alloy/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f uptime-kuma/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f homepage/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f watchtower/docker-compose.yml up -d
+ExecStop=/usr/bin/docker compose -f watchtower/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f homepage/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f uptime-kuma/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f alloy/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f loki/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f prometheus/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f grafana/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f vaultwarden/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f authentik/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f portainer/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f traefik/docker-compose.yml down
+TimeoutStartSec=300
+TimeoutStopSec=120
+Restart=no
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ReadWritePaths=/opt/docker /var/run/docker.sock
+
+[Install]
+WantedBy=multi-user.target

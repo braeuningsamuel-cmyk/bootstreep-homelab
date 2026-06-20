@@ -1,0 +1,63 @@
+---
+# Loki configuration for Bootstreep Homelab
+# Centralized log aggregation
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+  replication_factor: 1
+  path_prefix: /loki
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/cache
+  filesystem:
+    directory: /loki/chunks
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  delete_request_store: filesystem
+
+limits_config:
+  retention_period: 744h   # 31 days
+  ingestion_rate_mb: 10
+  ingestion_burst_size_mb: 20
+  max_entries_limit_per_query: 5000
+  max_query_series: 500
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+
+frontend:
+  max_outstanding_per_tenant: 2048
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100

@@ -1,0 +1,86 @@
+---
+# Grafana Alloy configuration for Bootstreep Homelab
+# Collects logs from Docker, journald, and sends to Loki
+# Collects metrics and sends to Prometheus
+
+# Logging configuration
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// =====================================================================
+// METRICS: Prometheus Remote Write
+// =====================================================================
+
+prometheus.exporter.unix "local_system" {
+  filesystem {}
+  netclass {}
+  meminfo {}
+}
+
+prometheus.scrape "local_system" {
+  targets    = prometheus.exporter.unix.local_system.targets
+  forward_to = [prometheus.relabel.default.receiver]
+  job_name   = "node-exporter"
+}
+
+prometheus.relabel "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  external_labels = {
+    cluster = "bootstreep-homelab",
+    replica = "alloy-1",
+  }
+
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+// =====================================================================
+// LOGS: Loki Push API
+// =====================================================================
+
+loki.source.docker "docker_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = []
+  forward_to = [loki.process.default.receiver]
+  relabel_rules = {
+    container_label_com_ bootstreep_service = "true"
+  }
+}
+
+loki.source.journal "journald_logs" {
+  forward_to = [loki.process.default.receiver]
+  relabel_rules = {
+    job = "journald",
+  }
+}
+
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.regex {
+    expression = "^(?P<timestamp>\\S+)\\s+(?P<level>\\S+)\\s+(?P<message>.*)"
+  }
+
+  stage.labels {
+    values = {
+      level = "level",
+    }
+  }
+
+  stage.timestamp {
+    source = "timestamp"
+    format = "RFC3339Nano"
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
