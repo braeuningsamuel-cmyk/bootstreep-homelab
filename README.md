@@ -12,6 +12,43 @@
 
 ---
 
+## 🎯 Was ist drin? — Alle 11 Services auf einen Blick
+
+Bootstreep deployt **11 produktionsreife Docker-Services** + **5-Layer-Security-Stack** + **Backup-Pipeline** in einem einzigen Befehl:
+
+| # | Service | Zweck | Technologie | Standard-Port |
+|---|---------|-------|-------------|--------------|
+| 🔀 | **Traefik v3.1** | Reverse Proxy + SSL/TLS | Traefik | 80, 443 |
+| 🔐 | **Authentik** | SSO / Identity Provider | Go + Python | 9000 |
+| 🗄️ | **Authentik PostgreSQL** | Identity Database | PostgreSQL 16 | 5432 |
+| ⚡ | **Authentik Redis** | Identity Cache | Redis 7 | 6379 |
+| 🐳 | **Portainer CE** | Docker Management UI | Portainer | 9443 |
+| 🔑 | **Vaultwarden** | Password Manager | Rust | 80 |
+| 📊 | **Grafana** | Metriken-Dashboards | Grafana | 3000 |
+| 📈 | **Prometheus** | Metriken-Sammlung | Prometheus | 9090 |
+| 📜 | **Loki** | Log-Aggregation | Grafana Loki | 3100 |
+| 🔄 | **Alloy** | Log/Metrik-Collector | Grafana Alloy | 12345 |
+| 💚 | **Uptime Kuma** | Uptime-Monitoring | Node.js | 3001 |
+| 🏠 | **Homepage** | Service-Dashboard | Node.js | 3000 |
+| 🔄 | **Watchtower** | Auto-Updates | Go | - |
+
+**Zusätzlich inkludiert:**
+
+| Komponente | Zweck |
+|-----------|-------|
+| 🛡️ **UFW Firewall** | Network Edge Protection |
+| 🚫 **Fail2Ban** | Intrusion Detection (SSH + Traefik) |
+| 🔒 **AppArmor** | Mandatory Access Control |
+| 🐳 **Docker CE** | Container Runtime |
+| ⏰ **Chrony** | NTP Time Sync |
+| 🌐 **systemd-resolved** | DNS-over-HTTPS |
+| 💾 **Restic** | Backup Engine |
+| ☁️ **Rclone** | Cloud Backup Targets |
+| 🔧 **Systemd Service** | Auto-Start |
+| 🔁 **Rollback Script** | Disaster Recovery |
+
+---
+
 ## 🤔 Was ist Bootstreep?
 
 **Bootstreep** ist ein vollständiges, modulares und **idempotentes** Bootstrap-Framework für Homelab-Enthusiasten, Self-Hoster und DevOps-Engineers. Es transformiert eine frische Ubuntu Server 24.04 LTS Installation in eine **produktionsreife Enterprise-Architektur** — mit nur einem Befehl.
