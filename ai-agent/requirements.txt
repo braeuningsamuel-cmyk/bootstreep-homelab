@@ -1,3 +1,5 @@
-python-telegram-bot>=22.8
-requests>=2.34.2
-python-dotenv>=1.2.2
+# Pinned to compatible-release ranges. Re-pin with `pip-compile` for production.
+# See: https://pip-tools.readthedocs.io/en/stable/
+python-telegram-bot~=22.8
+requests~=2.34
+python-dotenv~=1.1

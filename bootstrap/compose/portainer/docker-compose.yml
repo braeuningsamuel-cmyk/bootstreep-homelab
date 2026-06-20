@@ -9,8 +9,11 @@ services:
     ports:
       - "9443:9443"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Hardened: read-only docker socket (write would allow container escape).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - portainer_data:/data
+      # Read-only rootfs; Portainer needs writes only under /data.
+      - /tmp:/tmp
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"

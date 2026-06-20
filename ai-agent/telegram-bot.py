@@ -212,6 +212,14 @@ async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not CONTAINER_RE.match(container):
         await update.message.reply_text("Ungueltiger Containername")
         return
+    # Hardening 2026-06-20: enforce that the container is part of a stack
+    # under ~/docker, mirroring cmd_restart. Without this, an authorised
+    # chat could read logs from any container running on the host.
+    docker_root = (Path.home() / "docker").resolve()
+    compose_file = (docker_root / container / "compose.yml").resolve()
+    if docker_root not in compose_file.parents:
+        await update.message.reply_text("Container nicht in ~/docker enthalten")
+        return
     lines = (
         context.args[1] if len(context.args) > 1 and context.args[1].isdigit() else "50"
     )

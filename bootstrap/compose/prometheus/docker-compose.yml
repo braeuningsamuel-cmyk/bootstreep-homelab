@@ -37,6 +37,9 @@ services:
           memory: 1G
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     logging:
       driver: json-file
       options:

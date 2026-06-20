@@ -4,10 +4,16 @@ Server-Commands für AI-Agent v3.13.0
 Privacy-First: Lokale Ausführung, keine externen Calls
 """
 
+import os
 import subprocess
 from pathlib import Path
 import re
 
+
+# Hardening audit 2026-06-20:
+#   * Pinned allowed-local commands with NO shell. shell=False enforced.
+#   * DOCKER_ROOT is overridable via env so this works for non-root agents.
+#   * ALLOWED_STACKS restricts which compose dirs the bot can act on.
 
 ALLOWED_LOCAL_COMMANDS = {
     "df": [["df", "-h"]],
@@ -26,6 +32,15 @@ ALLOWED_REMOTE_COMMANDS = {
 
 ALLOWED_DOCKER_ACTIONS = {"ps", "up", "down", "restart", "logs"}
 CONTAINER_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
+
+# Env-overridable compose root (default: ~/docker, matches existing deployments).
+DOCKER_ROOT = Path(os.environ.get("DOCKER_ROOT", Path.home() / "docker")).resolve()
+
+# Stacks the bot is permitted to control. Empty = any stack under DOCKER_ROOT
+# (legacy behaviour, kept for backwards compatibility). Set ALLOWED_STACKS in
+# ~/.config/bootstreep/agent.env to a comma-separated list of stack names.
+_env_stacks = os.environ.get("ALLOWED_STACKS", "").strip()
+ALLOWED_STACKS = {s.strip() for s in _env_stacks.split(",") if s.strip()}
 
 
 def run_local(command_name: str, timeout: int = 30) -> tuple:
@@ -93,14 +108,25 @@ def docker_action(action: str, container: str = None) -> tuple:
     if container:
         if not CONTAINER_RE.match(container):
             return False, f"Ungueltiger Containername: {container}"
-        compose_dir = Path.home() / "docker"
-        if not compose_dir.exists():
-            return False, f"Compose-Verzeichnis nicht gefunden: {compose_dir}"
-        for sub in compose_dir.iterdir():
-            if not sub.is_dir():
+        if not DOCKER_ROOT.exists():
+            return False, f"Compose-Verzeichnis nicht gefunden: {DOCKER_ROOT}"
+        # Only consider stacks explicitly allowed (or all, if ALLOWED_STACKS unset).
+        candidates = sorted(p for p in DOCKER_ROOT.iterdir() if p.is_dir())
+        if ALLOWED_STACKS:
+            candidates = [p for p in candidates if p.name in ALLOWED_STACKS]
+            if not candidates:
+                return False, "Keine erlaubten Stacks konfiguriert (ALLOWED_STACKS leer)"
+        for sub in candidates:
+            if not CONTAINER_RE.match(sub.name):
+                # Skip anything in the docker root that doesn't look like a stack name.
                 continue
             compose_file = sub / "compose.yml"
-            if not compose_file.exists():
+            if not compose_file.is_file():
+                continue
+            # Final safety: confirm compose_file path is inside DOCKER_ROOT.
+            try:
+                compose_file.resolve(strict=True).relative_to(DOCKER_ROOT)
+            except (ValueError, FileNotFoundError):
                 continue
             check = subprocess.run(
                 [
@@ -114,6 +140,7 @@ def docker_action(action: str, container: str = None) -> tuple:
                 capture_output=True,
                 text=True,
                 shell=False,
+                timeout=10,
             )
             if container in check.stdout.splitlines():
                 cmd = ["docker", "compose", "-f", str(compose_file)]
@@ -127,7 +154,7 @@ def docker_action(action: str, container: str = None) -> tuple:
                 elif action == "logs":
                     cmd.extend(["logs", "--tail", "50"])
                 result = subprocess.run(
-                    cmd, capture_output=True, text=True, shell=False
+                    cmd, capture_output=True, text=True, shell=False, timeout=120
                 )
                 return result.returncode == 0, (result.stdout or result.stderr).strip()
         return False, f"Container nicht gefunden: {container}"
@@ -135,7 +162,7 @@ def docker_action(action: str, container: str = None) -> tuple:
         if action != "ps":
             return False, "Docker-Aktion ohne Container nicht erlaubt"
         cmd = ["docker", "ps"]
-        result = subprocess.run(cmd, capture_output=True, text=True, shell=False)
+        result = subprocess.run(cmd, capture_output=True, text=True, shell=False, timeout=10)
         return result.returncode == 0, (result.stdout or result.stderr).strip()
 
 
