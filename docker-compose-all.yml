@@ -221,7 +221,7 @@ services:
 
   prowlarr:
     <<: *common
-    image: lscr.io/linuxserver/prowlarr:1.21.2
+    image: lscr.io/linuxserver/prowlarr:2.4.0
     container_name: prowlarr
     ports:
       - "9696:9696"
