@@ -11,7 +11,7 @@ jobs:
     name: Trivy FS Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run Trivy
         uses: aquasecurity/trivy-action@0.29.0
         with:
@@ -29,7 +29,7 @@ jobs:
     name: Gitleaks Full History
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Run gitleaks full
@@ -42,7 +42,7 @@ jobs:
     name: Check Image Updates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: List all pinned images
         run: |
           grep -rnh "image:" compose/*.yml docker-compose-all.yml | sort
