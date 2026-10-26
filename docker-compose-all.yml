@@ -365,7 +365,7 @@ services:
 
   vaultwarden:
     <<: *common
-    image: vaultwarden/server:1.31.0
+    image: vaultwarden/server:1.36.0
     container_name: vaultwarden
     ports:
       - "8093:80"
