@@ -282,7 +282,7 @@ services:
   # ─── WORKFLOWS & MONITORING ──────────────────────────────────────────
   n8n:
     <<: *common
-    image: n8nio/n8n:1.126.7
+    image: n8nio/n8n:2.26.8
     container_name: n8n
     ports:
       - "5678:5678"
